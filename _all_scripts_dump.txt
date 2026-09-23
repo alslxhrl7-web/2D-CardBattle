@@ -1,0 +1,906 @@
+===== Assets/Scripts/CardBattle/CardData.cs =====
+using UnityEngine;
+
+namespace CardBattle
+{
+    /// <summary>
+    /// 카드 한 장의 정적(불변) 데이터. 유닛의 이름/진영/스탯/키워드/아트 등 "이 카드가 무엇인가"를 정의한다.
+    /// 실제로 씬에 보이는 카드는 이 데이터를 참조하는 CardView(런타임 표시용 컴포넌트)로 만들어지며,
+    /// Assets/CardData/Joseon, Assets/CardData/Qing 폴더에 카드 1장당 asset 파일 1개씩 존재한다.
+    /// </summary>
+    [CreateAssetMenu(fileName = "NewCard", menuName = "CardBattle/CardData")]
+    public class CardData : ScriptableObject
+    {
+        public string cardNameKo;              // 한글 카드명 (네임플레이트 하단 표기)
+        public string cardNameEn;               // 영문 카드명 (네임플레이트 상단 표기 + GameObject 이름 "Card_<영문명>"으로도 쓰임)
+        public Faction faction;                 // 소속 진영 — CardView가 프레임/네임플레이트 색상을 여기서 결정
+        public CardKind cardKind = CardKind.Unit;
+        public Rarity rarity = Rarity.Common;   // 희귀도 — 리본 표시 여부/색/등급 라벨 결정
+        public int cost;                        // 군력(마나) 비용. CardManager.TryPlaceCard가 이 값을 소모 시도한다
+        public int attack;                      // 공격력 (카드 우하단 빨간 다이아몬드 배지)
+        public int health;                      // 체력 (카드 우하단 파란 원형 배지)
+        [TextArea] public string keywordText;   // "키워드명: 설명" 형식. CardView가 콜론(:) 기준으로 나눠 능력 박스에 표시
+        [TextArea] public string flavorText;    // 카드 맨 아래 플레이버 텍스트(설정용 짧은 문구, 전투에 영향 없음)
+        public Sprite portrait;                 // 카드 초상화. 원본 텍스처마다 PPU/해상도가 달라도 CardView.Setup()에서 항상 같은 크기로 보이도록 자동 스케일링됨
+    }
+}
+
+
+===== Assets/Scripts/CardBattle/CardDragHandler.cs =====
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace CardBattle
+{
+    /// <summary>
+    /// 손패의 카드 하나를 마우스로 집어서(OnMouseDown) 드래그하고(OnMouseDrag) 놓으면(OnMouseUp)
+    /// 그 아래 있는 FieldSlot에 배치를 시도하는 컴포넌트. 카드 프리팹 루트에 붙는다.
+    /// Unity의 OnMouse* 메시지를 받으려면 이 오브젝트에 Collider2D가 있어야 한다(프리팹에 BoxCollider2D 추가됨).
+    /// 이 프로젝트는 Active Input Handling이 새 Input System 전용으로 설정돼 있어, 레거시 Input 클래스 대신
+    /// UnityEngine.InputSystem의 Mouse.current로 마우스 좌표를 읽는다.
+    /// </summary>
+    [RequireComponent(typeof(CardView))]
+    public class CardDragHandler : MonoBehaviour
+    {
+        CardView view;
+        CardManager manager;
+        HandZone myHand;
+        Vector3 dragOffset;   // 클릭한 지점과 카드 중심의 차이(드래그 중 카드가 마우스에 "붙잡힌 듯" 자연스럽게 움직이게 함)
+        bool dragging;
+
+        const int DragSortingBase = 999; // 드래그 중인 카드는 다른 모든 카드보다 항상 위에 그려지도록 하는 sortingOrder 버킷
+
+        void Awake()
+        {
+            view = GetComponent<CardView>();
+        }
+
+        /// <summary>카드가 스폰될 때 CardManager가 호출: 어느 매니저/손패 소속 카드인지 기억해둔다.</summary>
+        public void Init(CardManager mgr, HandZone hand)
+        {
+            manager = mgr;
+            myHand = hand;
+        }
+
+        /// <summary>
+        /// 이 카드가 필드에 성공적으로 배치된 뒤 호출됨: 더 이상 손패 소속이 아니므로,
+        /// 이후 실수로 들어오는 클릭 이벤트가 손패에서 이 카드를 빼려고 시도하지 않도록 참조를 끊는다.
+        /// </summary>
+        public void ClearHand()
+        {
+            myHand = null;
+            dragging = false;
+        }
+
+        void OnMouseDown()
+        {
+            if (manager == null || myHand == null) return;
+            if (!manager.IsPlayerHand(myHand)) return; // 상대(청) 손패는 아직 드래그 불가 — 플레이어 손패만 조작 가능
+
+            dragging = true;
+            Vector3 mouseWorld = GetMouseWorld();
+            dragOffset = transform.position - mouseWorld;
+            view.SetLayerBase(DragSortingBase);
+        }
+
+        void OnMouseDrag()
+        {
+            if (!dragging) return;
+            Vector3 mouseWorld = GetMouseWorld();
+            transform.position = mouseWorld + dragOffset;
+        }
+
+        void OnMouseUp()
+        {
+            if (!dragging) return;
+            dragging = false;
+            TryDrop();
+        }
+
+        /// <summary>화면 마우스 좌표를 카드와 같은 z 평면 위의 월드 좌표로 변환한다.</summary>
+        Vector3 GetMouseWorld()
+        {
+            Camera cam = Camera.main;
+            Vector2 mouseScreen = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
+            Vector3 screen = new Vector3(mouseScreen.x, mouseScreen.y, 0f);
+            // 오소그래픽 카메라에서 카드가 있는 z 평면까지의 거리.
+            screen.z = Mathf.Abs(cam.transform.position.z - transform.position.z);
+            Vector3 world = cam.ScreenToWorldPoint(screen);
+            world.z = transform.position.z;
+            return world;
+        }
+
+        void TryDrop()
+        {
+            FieldSlot slot = FindSlotUnderCard();
+
+            if (slot != null && slot.IsEmpty && manager.TryPlaceCard(view, myHand, slot))
+                return; // 필드에 정상적으로 낸 경우
+
+            // 유효하지 않은 드롭(슬롯 없음 / 이미 참 / 군력 부족): 손패 부채꼴 자리로 되돌아간다.
+            // 카드가 여전히 hand.cards에 남아있으므로 Relayout()이 애니메이션과 함께 원위치로 복귀시키고
+            // sortingOrder 버킷도 되돌려준다.
+            if (myHand != null) myHand.Relayout();
+        }
+
+        /// <summary>
+        /// 카드 자신의 위치 아래에 있는 FieldSlot을 찾는다. OverlapPointAll(단일 히트가 아니라 전체)을 쓰는 이유:
+        /// 드래그 중인 카드 자신의 콜라이더도 같은 지점에 겹쳐 있어서, OverlapPoint 하나만 쓰면 자기 자신이
+        /// 걸릴 수 있다. 히트 목록 중 FieldSlot 컴포넌트가 있는 것만 채택한다.
+        /// </summary>
+        FieldSlot FindSlotUnderCard()
+        {
+            var hits = Physics2D.OverlapPointAll(transform.position);
+            foreach (var h in hits)
+            {
+                var slot = h.GetComponent<FieldSlot>();
+                if (slot != null) return slot;
+            }
+            return null;
+        }
+    }
+}
+
+
+===== Assets/Scripts/CardBattle/CardManager.cs =====
+using UnityEngine;
+using System.Collections.Generic;
+
+namespace CardBattle
+{
+    /// <summary>
+    /// 카드게임 한 판의 진행을 총괄하는 매니저.
+    /// - 플레이어/상대의 "덱 설계도"(DeckData)를 받아 실제 셔플된 드로우 더미를 만들고,
+    ///   게임 시작 시 시작 손패를 뽑고, 매 턴 종료마다 카드를 한 장씩 드로우한다.
+    /// - 군력(마나) 자원과 턴 번호를 관리하며,
+    /// - 손패의 카드를 필드에 배치하는 유일한 진입점(TryPlaceCard)을 제공한다.
+    /// 씬에는 하나만 존재하는 것을 전제로 작성됨(별도 싱글턴 처리는 없고, 필요한 참조는 전부 인스펙터에서 직접 연결).
+    /// </summary>
+    public class CardManager : MonoBehaviour
+    {
+        public GameObject cardViewPrefab;
+        public HandZone playerHand;
+        public HandZone enemyHand;
+        public FieldZone playerField;
+        public FieldZone enemyField;
+
+        [Header("덱 (덱 빌딩은 DeckData 에셋을 만들어 여기에 연결하는 방식으로 한다)")]
+        public DeckData playerDeckData;
+        public DeckData enemyDeckData;
+        public int startingHandSize = 4;     // 게임 시작 시 처음 뽑는 카드 수
+        public const int MaxHandSize = 10;   // 손패 최대 장수. 가득 찬 상태에서 드로우하면 그 카드는 "번(burn)"되어 사라진다(실제 TCG의 표준 규칙)
+
+        // 런타임 전용 상태: 셔플된 드로우 더미. DeckData(설계도)와 달리 게임을 진행하며 계속 줄어든다.
+        // ResetGame()에서 DeckData.BuildCardList()로 새로 만들어지므로 인스펙터에 노출할 필요는 없지만,
+        // 디버깅 편의를 위해 public으로 둔다.
+        [System.NonSerialized] public List<CardData> playerDrawPile = new List<CardData>();
+        [System.NonSerialized] public List<CardData> enemyDrawPile = new List<CardData>();
+
+        [Header("군력(마나)")]
+        public int turnNumber = 1;
+        public int maxMana = 1;
+        public int currentMana = 1;
+        public const int ManaCap = 10;   // 군력 최대치. 턴이 아무리 늘어도 이 값을 넘지 않는다
+        public TextMesh manaText;        // 화면에 "군력 X / Y (턴 N)"을 표시하는 3D 텍스트(ManaDisplay 오브젝트)
+
+        [Header("덱 매수 표시(선택)")]
+        public TextMesh playerDeckCountText; // "덱 N장" 표시용(플레이어)
+        public TextMesh enemyDeckCountText;  // "덱 N장" 표시용(상대)
+
+        void Start()
+        {
+            ResetGame();
+        }
+
+        /// <summary>
+        /// 손패/필드에 남아있는 카드를 전부 정리하고 군력·턴을 기본값으로 되돌린 뒤,
+        /// 양쪽 DeckData로부터 드로우 더미를 새로 셔플해서 만들고 시작 손패를 뽑는다.
+        /// 씬이 저장된 시점의 상태가 무엇이었든 항상 같은 절차로 수렴하는, 몇 번을 호출해도 안전한(idempotent) 리셋 함수.
+        /// </summary>
+        public void ResetGame()
+        {
+            ClearHand(playerHand);
+            ClearHand(enemyHand);
+            ClearField(playerField);
+            ClearField(enemyField);
+
+            turnNumber = 1;
+            maxMana = 1;
+            currentMana = 1;
+
+            // 덱 설계도(DeckData)를 실제 카드 낱장 리스트로 펼친 뒤 셔플해서 이번 판의 드로우 더미로 삼는다.
+            playerDrawPile = BuildShuffledDeck(playerDeckData);
+            enemyDrawPile = BuildShuffledDeck(enemyDeckData);
+
+            for (int i = 0; i < startingHandSize; i++)
+            {
+                DrawCard(playerHand, playerDrawPile);
+                DrawCard(enemyHand, enemyDrawPile);
+            }
+
+            UpdateManaDisplay();
+            UpdateDeckCountDisplay();
+        }
+
+        /// <summary>DeckData를 카드 낱장 리스트로 펼치고 Fisher-Yates로 섞은 새 리스트를 반환한다.</summary>
+        static List<CardData> BuildShuffledDeck(DeckData data)
+        {
+            var list = data != null ? data.BuildCardList() : new List<CardData>();
+            Shuffle(list);
+            return list;
+        }
+
+        /// <summary>표준 Fisher-Yates 셔플. 리스트를 제자리에서(in-place) 무작위로 섞는다.</summary>
+        static void Shuffle(List<CardData> list)
+        {
+            for (int i = list.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                var tmp = list[i];
+                list[i] = list[j];
+                list[j] = tmp;
+            }
+        }
+
+        /// <summary>
+        /// 드로우 더미 맨 위(리스트 끝 인덱스)에서 카드 한 장을 뽑아 손패에 스폰한다.
+        /// 더미가 비어있으면 아무 일도 일어나지 않는다(피로/탈진 데미지 같은 페널티는 아직 미구현 — 백로그 항목).
+        /// 손패가 이미 최대 장수(10장)라면 카드는 뽑히자마자 "번(burn)"되어 사라진다(실제 TCG의 표준 규칙).
+        /// </summary>
+        public void DrawCard(HandZone hand, List<CardData> pile)
+        {
+            if (hand == null || pile == null || pile.Count == 0)
+            {
+                UpdateDeckCountDisplay();
+                return;
+            }
+
+            var data = pile[pile.Count - 1];
+            pile.RemoveAt(pile.Count - 1);
+
+            if (hand.cards.Count < MaxHandSize)
+                SpawnCardToHand(data, hand);
+            // else: 손패가 가득 차서 카드가 번(burn)됨 — 더미에서는 이미 제거되었으므로 그냥 사라진 것으로 처리
+
+            UpdateDeckCountDisplay();
+        }
+
+        void UpdateDeckCountDisplay()
+        {
+            if (playerDeckCountText != null)
+                playerDeckCountText.text = "덱 " + playerDrawPile.Count + "장";
+            if (enemyDeckCountText != null)
+                enemyDeckCountText.text = "덱 " + enemyDrawPile.Count + "장";
+        }
+
+        /// <summary>
+        /// Object.Destroy는 플레이 모드에서만 동작하고, 에디터 스크립트로 에디트 모드에서 호출하면
+        /// "Destroy may not be called from edit mode!" 오류를 낸다. 두 모드 모두에서 안전하게 쓰기 위한 헬퍼.
+        /// </summary>
+        static void DestroyGameObject(GameObject go)
+        {
+            if (Application.isPlaying) Object.Destroy(go);
+            else Object.DestroyImmediate(go);
+        }
+
+        /// <summary>
+        /// 손패를 완전히 비운다. cards 리스트에 "추적된" 카드만 지우는 것이 아니라 HandZone의 실제
+        /// 자식 오브젝트 전부를 지운다 — 과거 테스트/리셋 코드가 리스트에 등록하지 않은 채 카드를 자식으로
+        /// 남겨두면(고아 오브젝트) 겉보기엔 멀쩡해 보여도 카드가 겹쳐 쌓이는 원인이 되므로, 리스트가 아니라
+        /// 하이어라키 자체를 기준으로 청소해서 이런 고아가 절대 남지 않게 한다.
+        /// </summary>
+        static void ClearHand(HandZone hand)
+        {
+            if (hand == null) return;
+            for (int i = hand.transform.childCount - 1; i >= 0; i--)
+                DestroyGameObject(hand.transform.GetChild(i).gameObject);
+            hand.cards.Clear();
+        }
+
+        /// <summary>
+        /// 필드에 놓인 카드를 전부 치운다. 주의: FieldZone의 자식에는 카드뿐 아니라 "슬롯"
+        /// 오브젝트 자체(FrontSlot_-4 등, 필드의 고정 구조물)도 함께 들어있으므로, HandZone처럼
+        /// 자식 전체를 지우면 슬롯 자체가 파괴되어 필드가 통째로 망가진다(실제로 이 버그 때문에
+        /// 슬롯이 전부 사라져서 카드가 하나도 안 내지는 사고가 있었음). 그래서 frontRow/backRow에
+        /// 등록된 슬롯 트랜스폼은 제외하고, 그 외의 자식(=카드)만 지운다.
+        /// </summary>
+        static void ClearField(FieldZone field)
+        {
+            if (field == null) return;
+
+            var slotTransforms = new HashSet<Transform>();
+            if (field.frontRow != null) foreach (var s in field.frontRow) if (s != null) slotTransforms.Add(s.transform);
+            if (field.backRow != null) foreach (var s in field.backRow) if (s != null) slotTransforms.Add(s.transform);
+
+            for (int i = field.transform.childCount - 1; i >= 0; i--)
+            {
+                var child = field.transform.GetChild(i);
+                if (slotTransforms.Contains(child)) continue; // 슬롯 고정 구조물은 건드리지 않는다
+                DestroyGameObject(child.gameObject);
+            }
+
+            foreach (var row in new[] { field.frontRow, field.backRow })
+            {
+                if (row == null) continue;
+                foreach (var slot in row) if (slot != null) slot.occupant = null;
+            }
+        }
+
+        /// <summary>카드 프리팹을 인스턴스화해 지정한 손패에 넣고, CardView 표시 초기화와 드래그 핸들러 연결까지 처리한다.</summary>
+        public CardView SpawnCardToHand(CardData data, HandZone hand)
+        {
+            if (cardViewPrefab == null || data == null || hand == null) return null;
+            GameObject go = Object.Instantiate(cardViewPrefab, hand.transform.position, Quaternion.identity);
+            go.name = "Card_" + data.cardNameEn;
+            var view = go.GetComponent<CardView>();
+            if (view != null) view.Setup(data);
+            hand.AddCard(go.transform);
+
+            var drag = go.GetComponent<CardDragHandler>();
+            if (drag != null) drag.Init(this, hand);
+
+            return view;
+        }
+
+        /// <summary>드래그 가능 여부 판단용: 이 손패가 "플레이어" 손패인지(상대 손패는 아직 드래그 조작 불가).</summary>
+        public bool IsPlayerHand(HandZone hand)
+        {
+            return hand == playerHand;
+        }
+
+        /// <summary>군력이 충분하면 소모하고 true, 부족하면 아무 것도 하지 않고 false를 반환한다.</summary>
+        public bool TrySpendMana(int amount)
+        {
+            if (amount < 0) amount = 0;
+            if (amount > currentMana) return false;
+            currentMana -= amount;
+            UpdateManaDisplay();
+            return true;
+        }
+
+        /// <summary>
+        /// 턴을 종료한다: 턴 번호를 올리고, 최대 군력을 (턴 번호, ManaCap) 중 작은 값으로 올린 뒤
+        /// 현재 군력을 최대치로 가득 채우고, 양쪽 다 드로우 더미에서 카드를 한 장씩 뽑는다.
+        /// (아직 진짜 "턴 교대"가 구현되어 있지 않아 — 상대는 별도 AI/행동 없이 카드만 쌓임 — 임시로
+        /// 매 턴 종료 시 양쪽 모두 드로우하게 해뒀다. 실제 턴 교대 시스템이 생기면 각자 자기 턴에만
+        /// 드로우하도록 바뀔 예정.)
+        /// 화면의 "턴 종료" 버튼(EndTurnButton)이 클릭 시 이 메서드를 호출한다.
+        /// </summary>
+        public void EndTurn()
+        {
+            turnNumber++;
+            maxMana = Mathf.Min(ManaCap, turnNumber);
+            currentMana = maxMana;
+
+            DrawCard(playerHand, playerDrawPile);
+            DrawCard(enemyHand, enemyDrawPile);
+
+            UpdateManaDisplay();
+        }
+
+        void UpdateManaDisplay()
+        {
+            if (manaText != null)
+                manaText.text = string.Format("군력 {0} / {1}   (턴 {2})", currentMana, maxMana, turnNumber);
+        }
+
+        /// <summary>
+        /// 손패 카드를 필드 슬롯에 배치하는 유일한 진입점. 마나 체크 → 손패에서 제거(재배치 트리거) →
+        /// 필드존에 배치 → 드래그 핸들러의 손패 참조 해제까지 한 번에 처리한다.
+        /// 실패 조건: 카드/슬롯이 없거나, 슬롯이 이미 차 있거나, 군력이 부족한 경우.
+        /// </summary>
+        public bool TryPlaceCard(CardView view, HandZone fromHand, FieldSlot slot)
+        {
+            if (view == null || view.data == null || fromHand == null || slot == null || !slot.IsEmpty)
+                return false;
+
+            if (!TrySpendMana(view.data.cost))
+                return false;
+
+            fromHand.RemoveCard(view.transform);
+
+            var field = (fromHand == playerHand) ? playerField : enemyField;
+            field.PlaceCard(view.transform, slot);
+
+            var drag = view.GetComponent<CardDragHandler>();
+            if (drag != null) drag.ClearHand();
+
+            return true;
+        }
+    }
+}
+
+
+===== Assets/Scripts/CardBattle/CardSlotMover.cs =====
+using UnityEngine;
+using System.Collections;
+
+namespace CardBattle
+{
+    /// <summary>
+    /// 카드가 목표 위치/회전으로 부드럽게 이동하도록 도와주는 보조 컴포넌트.
+    /// 손패 재배치(HandZone.Relayout)와 필드 배치(FieldZone.PlaceCard) 양쪽에서 공용으로 쓰인다.
+    /// 이 컴포넌트가 없는 카드는 호출부에서 null 체크 후 즉시 스냅 이동으로 대체 처리한다.
+    /// </summary>
+    public class CardSlotMover : MonoBehaviour
+    {
+        public float duration = 0.25f;
+        Coroutine active;
+
+        /// <summary>목표 위치/회전으로 이동을 시작한다. 이동 중에 다시 호출되면 기존 이동을 취소하고 새 목표로 갱신한다.</summary>
+        public void MoveTo(Vector3 pos, Quaternion rot)
+        {
+            // 비활성 오브젝트에서는 코루틴을 시작할 수 없으므로 즉시 스냅 처리.
+            if (!gameObject.activeInHierarchy) { transform.position = pos; transform.rotation = rot; return; }
+            if (active != null) StopCoroutine(active);
+            active = StartCoroutine(MoveRoutine(pos, rot));
+        }
+
+        IEnumerator MoveRoutine(Vector3 targetPos, Quaternion targetRot)
+        {
+            Vector3 startPos = transform.position;
+            Quaternion startRot = transform.rotation;
+            float t = 0f;
+            while (t < duration)
+            {
+                t += Time.deltaTime;
+                float k = Mathf.Clamp01(t / duration);
+                transform.position = Vector3.Lerp(startPos, targetPos, k);
+                transform.rotation = Quaternion.Slerp(startRot, targetRot, k);
+                yield return null;
+            }
+            // 부동소수점 오차로 정확히 목표에 도달하지 못할 수 있으므로 마지막에 스냅으로 마무리.
+            transform.position = targetPos;
+            transform.rotation = targetRot;
+        }
+    }
+}
+
+
+===== Assets/Scripts/CardBattle/CardView.cs =====
+using UnityEngine;
+using System.Text;
+using System.Collections.Generic;
+
+namespace CardBattle
+{
+    /// <summary>
+    /// CardData 한 장을 실제 하스스톤/섀도우버스 스타일 카드로 그려주는 컴포넌트.
+    /// 프레임/초상화/코스트/희귀도 리본/능력 박스/네임플레이트/공격력·체력 배지를 전부 조립해서
+    /// CardData의 값으로 채워 넣는다(Setup 한 번 호출로 전체 표시가 완성됨).
+    /// 손패에서 카드끼리 겹칠 때 z-fighting이 나지 않도록 SetLayerBase로 카드 단위 정렬 순서도 관리한다.
+    /// </summary>
+    public class CardView : MonoBehaviour
+    {
+        public CardData data;
+
+        // ---- 프리팹 자식 오브젝트 참조 (전부 CardView.prefab에서 인스펙터로 연결됨) ----
+        public SpriteRenderer frameRenderer;
+        public SpriteRenderer portraitRenderer;
+        public SpriteRenderer namePlateRenderer;
+        public SpriteRenderer abilityBgRenderer;
+        public SpriteRenderer costBadgeRenderer;
+        public SpriteRenderer rarityRibbonRenderer;
+        public SpriteRenderer atkBadgeRenderer;
+        public SpriteRenderer hpBadgeRenderer;
+
+        public TextMesh nameText;
+        public TextMesh nameTextKo;
+        public TextMesh costText;
+        public TextMesh atkText;
+        public TextMesh hpText;
+        public TextMesh rarityText;
+        public TextMesh abilityNameText;
+        public TextMesh abilityDescText;
+        public TextMesh flavorTextMesh;
+
+        public GameObject rarityRibbonRoot;
+        public GameObject abilityBoxRoot;
+
+        // ---- 진영/희귀도별 색상표 ----
+        static readonly Color JoseonColor = new Color(0.14f, 0.20f, 0.42f);
+        static readonly Color QingColor = new Color(0.42f, 0.10f, 0.09f);
+
+        static readonly Color RarityCommon = new Color(0.55f, 0.55f, 0.55f);
+        static readonly Color RarityElite = new Color(0.30f, 0.55f, 0.80f);
+        static readonly Color RarityLegendary = new Color(0.85f, 0.58f, 0.12f);
+        static readonly Color RarityHero = new Color(0.62f, 0.14f, 0.62f);
+
+        const int AbilityWrapChars = 10; // 능력 설명 줄바꿈 기준 글자수(한글 기준, 능력 박스 실측 폭에 맞춰 보정됨)
+
+        // 영문 카드명이 카드 폭을 넘어 우하단 공격력/체력 배지를 침범하지 않도록 글자 수에 반비례해
+        // characterSize를 계산하는 보정 상수들. width(단위: 월드 유닛) ~= NameWidthK * 글자수 * characterSize.
+        const float NameWidthK = 1.6f;
+        const float NameCharSizeMax = 0.042f;
+        const float NameCharSizeMin = 0.018f;
+        const float NameTargetWidth = 0.85f;
+
+        // 초상화 박스의 목표 크기(월드 유닛). 소스 초상화 텍스처마다 파이프라인이 달라 해상도/PPU가
+        // 제각각이므로, 고정 localScale은 우연히만 맞는다. 대신 Setup()에서 매 카드마다 스프라이트의
+        // 실제 로컬 바운드(원본 크기)를 읽어 항상 이 크기로 늘어나도록 스케일을 역산한다.
+        static readonly Vector2 PortraitTargetSize = new Vector2(1.15f, 1.55f);
+
+        List<Renderer> layerRenderers;
+        List<int> layerRelativeOrders;
+
+        /// <summary>이 카드를 구성하는 모든 Renderer와, 서로 간의 상대적 그리기 순서(원래 sortingOrder)를 최초 1회 캐싱한다.</summary>
+        void CaptureLayerOrders()
+        {
+            if (layerRenderers != null) return;
+            layerRenderers = new List<Renderer>();
+            layerRelativeOrders = new List<int>();
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+            {
+                layerRenderers.Add(r);
+                layerRelativeOrders.Add(r.sortingOrder);
+            }
+        }
+
+        /// <summary>
+        /// 카드 전체에 고유한 sortingOrder "버킷"을 부여해서, 손패에서 카드끼리 겹칠 때
+        /// 이 카드의 프레임/초상화/텍스트가 절대 다른 카드의 레이어와 뒤섞이지 않게 한다.
+        /// (baseIndex가 클수록 위에 그려짐. 드래그 중인 카드는 CardDragHandler가 아주 큰 값을 넘겨 항상 맨 위로 올린다.)
+        /// </summary>
+        public void SetLayerBase(int baseIndex)
+        {
+            CaptureLayerOrders();
+            for (int i = 0; i < layerRenderers.Count; i++)
+            {
+                if (layerRenderers[i] != null)
+                    layerRenderers[i].sortingOrder = baseIndex * 20 + layerRelativeOrders[i];
+            }
+        }
+
+        /// <summary>CardData의 내용을 이 카드의 모든 시각 요소(프레임 색상/초상화/텍스트/배지 등)에 반영한다.</summary>
+        public void Setup(CardData d)
+        {
+            data = d;
+            if (d == null) return;
+
+            bool isJoseon = d.faction == Faction.Joseon;
+            Color factionColor = isJoseon ? JoseonColor : QingColor;
+
+            if (frameRenderer != null) frameRenderer.color = factionColor;
+            if (namePlateRenderer != null) namePlateRenderer.color = new Color(factionColor.r, factionColor.g, factionColor.b, 0.92f);
+            if (abilityBgRenderer != null) abilityBgRenderer.color = new Color(0.04f, 0.04f, 0.05f, 0.80f);
+
+            if (portraitRenderer != null && d.portrait != null)
+            {
+                portraitRenderer.sprite = d.portrait;
+                // 이 스프라이트만의 원본(PPU 반영) 로컬 바운드를 읽어서, 텍스처 임포트 설정과 무관하게
+                // 항상 PortraitTargetSize로 렌더링되도록 스케일을 역산한다.
+                Vector2 native = d.portrait.bounds.size;
+                if (native.x > 0.0001f && native.y > 0.0001f)
+                {
+                    portraitRenderer.transform.localScale = new Vector3(
+                        PortraitTargetSize.x / native.x,
+                        PortraitTargetSize.y / native.y,
+                        1f);
+                }
+            }
+
+            if (nameText != null)
+            {
+                nameText.text = d.cardNameEn;
+                int len = string.IsNullOrEmpty(d.cardNameEn) ? 1 : d.cardNameEn.Length;
+                float cs = NameTargetWidth / (NameWidthK * len);
+                nameText.characterSize = Mathf.Clamp(cs, NameCharSizeMin, NameCharSizeMax);
+            }
+            if (nameTextKo != null) nameTextKo.text = d.cardNameKo;
+
+            if (costText != null) costText.text = d.cost.ToString();
+            if (atkText != null) atkText.text = d.attack.ToString();
+            if (hpText != null) hpText.text = d.health.ToString();
+
+            string abilityName, abilityDesc;
+            ParseKeyword(d.keywordText, out abilityName, out abilityDesc);
+
+            bool hasAbility = !string.IsNullOrEmpty(abilityName);
+            if (abilityBoxRoot != null) abilityBoxRoot.SetActive(hasAbility);
+            if (abilityNameText != null) abilityNameText.text = WrapText(abilityName, AbilityWrapChars);
+            if (abilityDescText != null) abilityDescText.text = WrapText(abilityDesc, AbilityWrapChars);
+
+            if (flavorTextMesh != null) flavorTextMesh.text = d.flavorText ?? "";
+
+            Color rarityColor; string rarityLabel;
+            GetRarityStyle(d.rarity, out rarityColor, out rarityLabel);
+            bool showRibbon = d.rarity != Rarity.Common; // Common은 리본을 아예 숨김(일반 카드는 등급 표시가 없는 편이 자연스러움)
+            if (rarityRibbonRoot != null) rarityRibbonRoot.SetActive(showRibbon);
+            if (rarityRibbonRenderer != null) rarityRibbonRenderer.color = rarityColor;
+            if (rarityText != null) rarityText.text = rarityLabel;
+
+            if (atkBadgeRenderer != null) atkBadgeRenderer.color = new Color(0.55f, 0.10f, 0.08f);
+            if (hpBadgeRenderer != null) hpBadgeRenderer.color = new Color(0.10f, 0.28f, 0.55f);
+        }
+
+        /// <summary>"키워드명: 설명" 형식의 문자열을 콜론(:) 기준으로 이름/설명으로 분리한다. 콜론이 없으면 전부 이름으로 취급.</summary>
+        static void ParseKeyword(string keywordText, out string name, out string desc)
+        {
+            name = "";
+            desc = "";
+            if (string.IsNullOrEmpty(keywordText)) return;
+            int idx = keywordText.IndexOf(':');
+            if (idx >= 0)
+            {
+                name = keywordText.Substring(0, idx).Trim();
+                desc = keywordText.Substring(idx + 1).Trim();
+            }
+            else
+            {
+                name = keywordText.Trim();
+                desc = "";
+            }
+        }
+
+        /// <summary>희귀도별로 리본 색상과 표시 문자열(HERO/LEGENDARY/ELITE)을 정한다. Common은 빈 문자열(리본 자체가 숨겨지므로 실제로 안 보임).</summary>
+        static void GetRarityStyle(Rarity r, out Color color, out string label)
+        {
+            switch (r)
+            {
+                case Rarity.Hero: color = RarityHero; label = "HERO"; break;
+                case Rarity.Legendary: color = RarityLegendary; label = "LEGENDARY"; break;
+                case Rarity.Elite: color = RarityElite; label = "ELITE"; break;
+                default: color = RarityCommon; label = ""; break;
+            }
+        }
+
+        /// <summary>공백 기준 단어 단위로 줄바꿈하는 간단한 워드랩. TextMesh는 자동 줄바꿈을 지원하지 않아 직접 구현했다.</summary>
+        static string WrapText(string s, int maxCharsPerLine)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            string[] words = s.Split(' ');
+            var sb = new StringBuilder();
+            int lineLen = 0;
+            foreach (var w in words)
+            {
+                if (lineLen > 0 && lineLen + 1 + w.Length > maxCharsPerLine)
+                {
+                    sb.Append('\n');
+                    lineLen = 0;
+                }
+                else if (lineLen > 0)
+                {
+                    sb.Append(' ');
+                    lineLen += 1;
+                }
+                sb.Append(w);
+                lineLen += w.Length;
+            }
+            return sb.ToString();
+        }
+    }
+}
+
+
+===== Assets/Scripts/CardBattle/DeckData.cs =====
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace CardBattle
+{
+    /// <summary>
+    /// 하나의 "덱 구성"을 담는 에셋. 실제 카드 오브젝트가 아니라 "어떤 카드를 몇 장 넣을지"만
+    /// 정의하는 설계도이고, 게임 시작 시 CardManager가 이 데이터를 실제 카드 낱장 리스트로 펼친 뒤
+    /// 셔플해서 "드로우 더미"를 만든다. 이렇게 데이터(덱 설계도)와 런타임 상태(셔플된 더미)를
+    /// 분리해두면, 같은 덱 에셋으로 여러 판을 다시 시작해도 매번 새로 셔플된다.
+    ///
+    /// 새 덱을 만들려면: 프로젝트 창에서 우클릭 → Create → CardBattle → Deck Data.
+    /// 그 다음 인스펙터에서 entries 리스트에 카드(CardData)와 매수(count)를 채워 넣으면 된다.
+    /// 이것이 이 프로젝트에서 "덱 빌딩"에 해당한다 — 코드 수정 없이 에셋만으로 새로운 덱 조합을 만들 수 있다.
+    /// </summary>
+    [CreateAssetMenu(fileName = "NewDeck", menuName = "CardBattle/Deck Data")]
+    public class DeckData : ScriptableObject
+    {
+        /// <summary>덱에 들어가는 카드 한 종류 + 매수(중복 포함 몇 장인지).</summary>
+        [System.Serializable]
+        public class Entry
+        {
+            public CardData card;
+            [Min(1)] public int count = 1;
+        }
+
+        public string deckName;
+        public Faction faction;
+        public List<Entry> entries = new List<Entry>();
+
+        /// <summary>덱에 포함된 카드 총 장수(중복 포함)를 계산한다. 인스펙터에서 확인용으로도 쓸 수 있다.</summary>
+        public int TotalCount()
+        {
+            int total = 0;
+            foreach (var e in entries)
+                if (e != null && e.card != null) total += Mathf.Max(1, e.count);
+            return total;
+        }
+
+        /// <summary>
+        /// entries(카드 + 매수)를 실제 카드 한 장 한 장의 평평한 리스트로 펼친다.
+        /// 이 리스트를 셔플한 것이 곧 한 판의 "드로우 더미" 초기 상태가 된다.
+        /// 호출할 때마다 새 리스트를 만들어 반환하므로, 원본 entries를 실수로 건드릴 위험이 없다.
+        /// </summary>
+        public List<CardData> BuildCardList()
+        {
+            var list = new List<CardData>();
+            foreach (var e in entries)
+            {
+                if (e == null || e.card == null) continue;
+                int c = Mathf.Max(1, e.count);
+                for (int i = 0; i < c; i++) list.Add(e.card);
+            }
+            return list;
+        }
+    }
+}
+
+
+===== Assets/Scripts/CardBattle/EndTurnButton.cs =====
+using UnityEngine;
+
+namespace CardBattle
+{
+    /// <summary>
+    /// 화면에 배치되는 "턴 종료" 버튼. 손패 카드를 원하는 만큼 낸 뒤 이 버튼을 눌러 턴을 넘긴다.
+    /// 별도의 uGUI Canvas/EventSystem 없이, 카드와 똑같은 방식(SpriteRenderer + BoxCollider2D +
+    /// OnMouse* 메시지)으로 클릭을 감지해서 CardManager.EndTurn()을 호출한다.
+    /// 마우스가 올라오거나 누르는 동안 배경색을 바꿔 클릭 가능한 버튼임을 시각적으로 알려준다.
+    /// </summary>
+    [RequireComponent(typeof(BoxCollider2D))]
+    public class EndTurnButton : MonoBehaviour
+    {
+        public CardManager manager;
+        public SpriteRenderer background;
+
+        static readonly Color NormalColor = new Color(0.55f, 0.42f, 0.12f);
+        static readonly Color HoverColor = new Color(0.75f, 0.58f, 0.20f);
+        static readonly Color PressColor = new Color(0.35f, 0.26f, 0.07f);
+
+        void OnMouseEnter()
+        {
+            if (background != null) background.color = HoverColor;
+        }
+
+        void OnMouseExit()
+        {
+            if (background != null) background.color = NormalColor;
+        }
+
+        void OnMouseDown()
+        {
+            if (background != null) background.color = PressColor;
+        }
+
+        void OnMouseUp()
+        {
+            if (background != null) background.color = HoverColor;
+            if (manager != null) manager.EndTurn();
+        }
+    }
+}
+
+
+===== Assets/Scripts/CardBattle/Faction.cs =====
+namespace CardBattle
+{
+    /// <summary>카드가 속한 진영. 조선(수성)과 청(기동전)이 현재 메인이고, 명나라는 시즌2 확장용으로 예약된 값.</summary>
+    public enum Faction { Joseon, Qing, Ming }
+
+    /// <summary>카드의 큰 분류: 장수(유닛) / 전술(스펠) / 병기(무기) / 진(지속효과 구조물, 트랩 등).</summary>
+    public enum CardKind { Unit, Spell, Weapon, Formation }
+
+    /// <summary>카드 희귀도. CardView가 리본 색상/등급 라벨(HERO/LEGENDARY/ELITE)을 여기서 결정한다. Common은 리본 자체를 숨김.</summary>
+    public enum Rarity { Common, Elite, Legendary, Hero }
+}
+
+
+===== Assets/Scripts/CardBattle/FieldZone.cs =====
+using UnityEngine;
+
+namespace CardBattle
+{
+    /// <summary>
+    /// 필드 위의 카드 한 자리(슬롯). occupant가 null이면 빈 슬롯이다.
+    /// 드래그 앤 드롭(CardDragHandler)이 Physics2D로 이 컴포넌트가 붙은 콜라이더를 찾아
+    /// "여기 놓을 수 있는지"를 판단하므로, 씬에서 슬롯 오브젝트에는 반드시 Collider2D가 있어야 한다.
+    /// </summary>
+    public class FieldSlot : MonoBehaviour
+    {
+        public Transform occupant;
+        public bool IsEmpty { get { return occupant == null; } }
+    }
+
+    /// <summary>
+    /// 한 플레이어(또는 상대)의 필드 전체. 전열(frontRow)/후열(backRow) 각 5칸으로 구성되며,
+    /// 배열 순서와 좌우 대칭은 씬에서 미리 배치해둔 FieldSlot 오브젝트들의 배열 그대로를 따른다.
+    /// </summary>
+    public class FieldZone : MonoBehaviour
+    {
+        public FieldSlot[] frontRow;
+        public FieldSlot[] backRow;
+
+        /// <summary>전열/후열 중 지정한 줄에서 가장 먼저 비어있는 슬롯을 찾는다(현재는 자동 배치 로직에서 미사용, 향후 AI/자동 배치용으로 남겨둠). 없으면 null.</summary>
+        public FieldSlot GetFirstEmpty(bool front)
+        {
+            var row = front ? frontRow : backRow;
+            if (row == null) return null;
+            foreach (var s in row) if (s != null && s.IsEmpty) return s;
+            return null;
+        }
+
+        /// <summary>
+        /// 카드를 이 필드존의 자식으로 재배치하고 지정한 슬롯의 점유자로 등록한다.
+        /// 실제 이동은 CardSlotMover가 있으면 부드럽게 보간하고, 없으면 즉시 스냅한다.
+        /// </summary>
+        public void PlaceCard(Transform card, FieldSlot slot)
+        {
+            if (slot == null) return;
+            slot.occupant = card;
+            card.SetParent(transform, true);
+            var mover = card.GetComponent<CardSlotMover>();
+            if (mover != null) mover.MoveTo(slot.transform.position, slot.transform.rotation);
+            else { card.position = slot.transform.position; card.rotation = slot.transform.rotation; }
+        }
+    }
+}
+
+
+===== Assets/Scripts/CardBattle/HandZone.cs =====
+using UnityEngine;
+using System.Collections.Generic;
+
+namespace CardBattle
+{
+    /// <summary>
+    /// 손패 한 벌(플레이어 또는 상대)의 카드를 부채꼴로 자동 배치한다.
+    /// 이 오브젝트의 자식으로는 오직 "현재 손패에 있는 카드"만 있어야 한다는 것이 전제 조건이다
+    /// (CardManager.ClearHand가 리셋 시 이 하이어라키를 통째로 비운다). 그래서 카드를 넣고 뺄 때는
+    /// 반드시 AddCard/RemoveCard를 통해야 cards 리스트와 실제 자식 목록이 어긋나지 않는다.
+    /// </summary>
+    public class HandZone : MonoBehaviour
+    {
+        public List<Transform> cards = new List<Transform>();
+        public float cardSpacing = 1.4f;   // 카드 사이 가로 간격(월드 유닛)
+        public float fanAngleDeg = 6f;     // 중앙에서 바깥쪽으로 갈수록 카드가 기울어지는 각도
+        public float arcHeight = 0.25f;    // 부채꼴 아치 곡률(중앙 카드일수록 위로 솟음)
+
+        /// <summary>카드를 손패에 추가하고 즉시 전체를 재배치한다.</summary>
+        public void AddCard(Transform card)
+        {
+            cards.Add(card);
+            card.SetParent(transform, true);
+            Relayout();
+        }
+
+        /// <summary>카드를 손패에서 제거(필드에 낼 때 등)하고 남은 카드들을 다시 부채꼴로 재배치한다.</summary>
+        public void RemoveCard(Transform card)
+        {
+            cards.Remove(card);
+            card.SetParent(null, true);
+            Relayout();
+        }
+
+        /// <summary>
+        /// 현재 cards 리스트 순서대로 부채꼴 위치/회전/겹침 순서(sortingOrder)를 다시 계산한다.
+        /// 드래그가 유효하지 않은 곳에 떨어졌을 때도 이 메서드가 호출되어 카드를 원래 자리로 되돌린다.
+        /// </summary>
+        public void Relayout()
+        {
+            int n = cards.Count;
+            for (int i = 0; i < n; i++)
+            {
+                float mid = (n - 1) / 2f;
+                float offset = i - mid; // 중앙 기준 좌우 대칭 오프셋(음수=왼쪽, 양수=오른쪽)
+                Vector3 pos = transform.position + new Vector3(offset * cardSpacing, -Mathf.Abs(offset) * arcHeight, -i * 0.01f);
+                Quaternion rot = Quaternion.Euler(0, 0, -offset * fanAngleDeg);
+                var mover = cards[i].GetComponent<CardSlotMover>();
+                if (mover != null) mover.MoveTo(pos, rot);
+                else { cards[i].position = pos; cards[i].rotation = rot; }
+
+                // 손패 안에서 카드가 겹칠 때 "인덱스가 클수록(오른쪽일수록) 위에 그려지도록"
+                // 카드별 sortingOrder 버킷을 인덱스 기준으로 다시 매긴다.
+                var view = cards[i].GetComponent<CardView>();
+                if (view != null) view.SetLayerBase(i);
+            }
+        }
+    }
+}
+
+

@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 842e544b1b54b3a4dab95082bcc02a09, type: 3}
+  m_Name: QingStarterDeck
+  m_EditorClassIdentifier: Assembly-CSharp::CardBattle.DeckData
+  deckName: "\uCCAD \uC2DC\uC791 \uB371"
+  faction: 1
+  entries:
+  - card: {fileID: 11400000, guid: 9ae1385081e72bb4682f0ffc89eaa8e6, type: 2}
+    count: 3
+  - card: {fileID: 11400000, guid: 1bd0ace622f01e549977a5b9839aa8bf, type: 2}
+    count: 2
+  - card: {fileID: 11400000, guid: 91f1cb4cf06f994488a727a3cc8904fc, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: ab6bdc02230c6c747a674d118cc5056c, type: 2}
+    count: 3
+  - card: {fileID: 11400000, guid: ee134cc9d699b9b4d8545a31fdd14bfb, type: 2}
+    count: 3
+  - card: {fileID: 11400000, guid: 62d216142921d4e4597ea617e2458cd5, type: 2}
+    count: 1

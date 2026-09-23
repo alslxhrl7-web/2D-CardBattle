@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7053b5164d8eb24ab5cff621008ec25, type: 3}
+  m_Name: Wall_Guard
+  m_EditorClassIdentifier: Assembly-CSharp::CardBattle.CardData
+  cardNameKo: "\uBC29\uBCBD\uBCD1"
+  cardNameEn: Wall Guard
+  faction: 0
+  cardKind: 0
+  rarity: 0
+  cost: 2
+  attack: 1
+  health: 4
+  keywordText: "Wall: \uC804\uC5F4 \uBC30\uCE58 \uC2DC \uBC1B\uB294 \uD53C\uD574 -1"
+  flavorText: "\uC77C\uBC18 \uC720\uB2DB."
+  portrait: {fileID: 21300000, guid: a77346a66c21e1e48842bc3fb5b1342c, type: 3}
