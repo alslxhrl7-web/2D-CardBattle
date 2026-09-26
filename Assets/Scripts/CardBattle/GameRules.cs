@@ -8,13 +8,16 @@ namespace CardBattle
     public static class GameRules
     {
         // ---- 손패 / 덱 ----
-        public const int StartingHandSize = 5;   // 게임 시작 시 뽑는 카드 수 (CardManager 인스펙터 값이 우선)
+        public const int StartingHandSize = 5;   // 게임 시작 시 뽑는 카드 수 (CardManager 인스펙터 값이 있으면 그쪽이 우선)
         public const int MaxHandSize = 10;       // 손패 최대 장수. 가득 찬 상태에서 드로우하면 그 카드는 버려진다(번)
-        public const int MinDeckSize = 10;       // 덱 빌더에서 저장 가능한 최소 장수
+        public const int MinDeckSize = 10;       // 덱 빌더에서 저장할 수 있는 최소 장수
+
+        // ---- 카드 내기 ----
+        public const int FirstTurnCardLimit = 1; // 첫 턴(1턴)에 각자 낼 수 있는 카드 수 (0으로 바꾸면 제한 없음)
 
         // ---- 군력(마나) ----
-        public const int StartingMana = 1;       // 1턴 최대 군력
-        public const int ManaCap = 10;           // 군력 최대치. 턴이 늘어도 이 값을 넘지 않는다
+        public const int StartingMana = 1;       // 1턴의 최대 군력
+        public const int ManaCap = 10;           // 군력 최대치. 턴이 계속 늘어도 이 값을 넘지 않는다
 
         // ---- 체력 ----
         public const int StartingHealth = 30;    // 히어로 시작 체력
@@ -26,21 +29,21 @@ namespace CardBattle
         {
             switch (rarity)
             {
-                case Rarity.Hero:      return 1;
-                case Rarity.Legendary: return 1;
-                case Rarity.Elite:     return 2;
-                default:               return 3;
+                case Rarity.Hero:      return 1; // 히어로 1장
+                case Rarity.Legendary: return 1; // 전설 1장
+                case Rarity.Elite:     return 2; // 엘리트 2장
+                default:               return 3; // 일반 3장
             }
         }
 
         /// <summary>
-        /// 턴 번호에 따른 최대 군력. 1턴 = StartingMana, 이후 턴마다 1씩 늘어나며 ManaCap을 넘지 않는다.
+        /// 턴 번호에 따른 최대 군력. 1턴 = StartingMana이고, 이후 턴마다 1씩 늘어나며 ManaCap을 넘지 않는다.
         /// </summary>
         public static int MaxManaForTurn(int turnNumber)
         {
-            int value = StartingMana + (turnNumber - 1);
-            if (value > ManaCap) value = ManaCap;
-            if (value < 0) value = 0;
+            int value = StartingMana + (turnNumber - 1); // 턴마다 1씩 증가
+            if (value > ManaCap) value = ManaCap;        // 최대치 제한
+            if (value < 0) value = 0;                    // 잘못된 턴 번호 방어
             return value;
         }
     }

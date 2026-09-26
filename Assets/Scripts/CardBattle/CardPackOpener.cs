@@ -10,7 +10,7 @@ namespace CardBattle
     /// 뽑는 순서(한 장마다):
     ///   1) rarityWeights 가중치로 희귀도를 고른다. (마지막 장이 보장 슬롯이면 guaranteedMinRarity 이상 중에서만)
     ///   2) cardPool에서 그 희귀도의 카드 중 하나를 무작위로 고른다.
-    ///   카드 풀에 없는 희귀도는 자동으로 제외되므로, 로스터가 작아도 예외 없이 항상 결과가 나온다.
+    ///   카드 풀에 없는 희귀도는 자동으로 제외되므로, 로스터가 작아도 오류 없이 항상 결과가 나온다.
     /// </summary>
     public static class CardPackOpener
     {
@@ -18,11 +18,11 @@ namespace CardBattle
         public static List<CardData> Open(CardPackData pack)
         {
             var result = new List<CardData>();
-            if (pack == null || pack.cardPool == null || pack.cardPool.Count == 0) return result;
+            if (pack == null || pack.cardPool == null || pack.cardPool.Count == 0) return result; // 뽑을 카드가 없음
 
             for (int i = 0; i < pack.cardsPerPack; i++)
             {
-                bool guaranteedSlot = pack.guaranteeLastSlot && i == pack.cardsPerPack - 1;
+                bool guaranteedSlot = pack.guaranteeLastSlot && i == pack.cardsPerPack - 1; // 마지막 장이 보장 슬롯인지
                 Rarity minRarity = guaranteedSlot ? pack.guaranteedMinRarity : Rarity.Common;
 
                 var card = PickCard(pack, RollRarity(pack, minRarity));
@@ -38,16 +38,18 @@ namespace CardBattle
         /// </summary>
         public static Rarity RollRarity(CardPackData pack, Rarity minRarity)
         {
+            // 뽑을 수 있는 항목들의 가중치 합
             float total = 0f;
             foreach (var rw in pack.rarityWeights)
                 if (IsRollable(pack, rw, minRarity)) total += rw.weight;
 
             if (total <= 0f)
             {
-                if (minRarity != Rarity.Common) return RollRarity(pack, Rarity.Common);
+                if (minRarity != Rarity.Common) return RollRarity(pack, Rarity.Common); // 조건을 풀고 다시
                 return pack.cardPool[0] != null ? pack.cardPool[0].rarity : Rarity.Common;
             }
 
+            // 0~total 사이 무작위 값이 어느 구간에 떨어지는지로 희귀도를 정한다
             float roll = Random.value * total;
             float accumulated = 0f;
             Rarity last = minRarity;
@@ -61,11 +63,13 @@ namespace CardBattle
             return last; // Random.value가 정확히 1.0일 때 대비
         }
 
+        /// <summary>이 항목이 지금 뽑힐 수 있는지: 가중치가 있고, 최소 등급 이상이고, 풀에 카드가 있어야 한다.</summary>
         static bool IsRollable(CardPackData pack, CardPackData.RarityWeight rw, Rarity minRarity)
         {
             return rw.weight > 0f && rw.rarity >= minRarity && pack.PoolFor(rw.rarity).Count > 0;
         }
 
+        /// <summary>해당 희귀도의 카드 중 하나를 무작위로 고른다.</summary>
         static CardData PickCard(CardPackData pack, Rarity rarity)
         {
             var pool = pack.PoolFor(rarity);

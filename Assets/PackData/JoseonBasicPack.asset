@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87f9dbad35686184da5802b911c61cd5, type: 3}
+  m_Name: JoseonBasicPack
+  m_EditorClassIdentifier: Assembly-CSharp::CardBattle.CardPackData
+  packName: "\uC870\uC120 \uAE30\uBCF8\uD329"
+  cardsPerPack: 5
+  cardPool:
+  - {fileID: 11400000, guid: 8ae39ee950cbaa74a9ed454312590f66, type: 2}
+  - {fileID: 11400000, guid: 4f641bfaa5ad5d64ba74bc71b18ae366, type: 2}
+  - {fileID: 11400000, guid: ea99c084aa85b4047a7833391d228658, type: 2}
+  - {fileID: 11400000, guid: 963cac88f65f4dd4789af4187ce5ccdc, type: 2}
+  - {fileID: 11400000, guid: 364db8dfb9ea6024b89f486cc637ceda, type: 2}
+  - {fileID: 11400000, guid: 077c7db80edad514f8297a77324f1fa1, type: 2}
+  rarityWeights:
+  - rarity: 0
+    weight: 70
+  - rarity: 1
+    weight: 22
+  - rarity: 2
+    weight: 6
+  - rarity: 3
+    weight: 2
+  guaranteeLastSlot: 1
+  guaranteedMinRarity: 1
+  autoFillFaction: 0

@@ -12,23 +12,24 @@ namespace CardBattle
         public static void DestroySafe(GameObject go)
         {
             if (go == null) return;
-            if (Application.isPlaying) Object.Destroy(go);
-            else Object.DestroyImmediate(go);
+            if (Application.isPlaying) Object.Destroy(go);  // 플레이 중: 프레임 끝에 파괴
+            else Object.DestroyImmediate(go);               // 에디터: 즉시 파괴
         }
 
-        /// <summary>parent의 자식을 전부 파괴한다. keep(선택)에 대해 true를 돌려주는 자식은 남긴다.</summary>
+        /// <summary>parent의 자식을 전부 파괴한다. keep(선택)이 true를 돌려주는 자식은 남긴다.</summary>
         public static void DestroyChildren(Transform parent, System.Predicate<Transform> keep = null)
         {
             if (parent == null) return;
+            // 뒤에서부터 지워야 인덱스가 밀리지 않는다
             for (int i = parent.childCount - 1; i >= 0; i--)
             {
                 var child = parent.GetChild(i);
-                if (keep != null && keep(child)) continue;
+                if (keep != null && keep(child)) continue; // 남겨야 하는 자식은 건너뜀
                 DestroySafe(child.gameObject);
             }
         }
 
-        /// <summary>TextMesh에 문구를 넣는다(null이면 조용히 무시 — 인스펙터 연결을 선택 사항으로 두기 위함).</summary>
+        /// <summary>TextMesh에 문구를 넣는다. target이 비어있으면(인스펙터에 연결 안 됨) 조용히 무시한다.</summary>
         public static void SetText(TextMesh target, string text)
         {
             if (target != null) target.text = text;

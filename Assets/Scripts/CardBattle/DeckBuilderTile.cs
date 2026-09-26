@@ -9,12 +9,13 @@ namespace CardBattle
     /// </summary>
     public class DeckBuilderTile : MonoBehaviour
     {
-        public CardData card;
-        public int count;
-        public int maxCount = 3;
-        public DeckBuilderUI ui;
-        public TextMesh countBadge;   // 우상단 "xN" 표시
+        public CardData card;        // 이 타일이 나타내는 카드
+        public int count;            // 덱에 넣을 매수
+        public int maxCount = 3;     // 최대 매수 (패널이 열릴 때 규칙대로 다시 설정됨)
+        public DeckBuilderUI ui;     // 매수가 바뀌었다고 알릴 덱 빌더
+        public TextMesh countBadge;  // 우상단 "xN" 표시
 
+        /// <summary>타일을 클릭했을 때: 매수를 하나 올린다(최대치를 넘으면 0으로).</summary>
         void OnMouseUp()
         {
             if (ui == null) return;
@@ -29,7 +30,7 @@ namespace CardBattle
             UpdateBadge();
         }
 
-        /// <summary>배지 텍스트를 현재 매수에 맞춘다. 0장이면 배지를 비운다.</summary>
+        /// <summary>배지 글자를 현재 매수에 맞춘다. 0장이면 배지를 비운다.</summary>
         public void UpdateBadge()
         {
             UnityUtil.SetText(countBadge, count > 0 ? string.Format(GameTexts.TileCountBadge, count) : "");

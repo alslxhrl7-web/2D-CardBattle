@@ -7,16 +7,18 @@ namespace CardBattle
     ///
     /// 새 키워드 효과를 추가하는 순서:
     ///   1) 여기에 이름 상수를 추가한다.
-    ///   2) 효과가 발동하는 곳(대부분 LaneCombat.cs)에서 card.HasKeyword(CardKeywords.XXX)로 확인한다.
+    ///   2) 효과가 발동하는 곳(대부분 LaneCombat.cs)에서 card.HasKeyword(CardKeywords.이름)으로 확인한다.
     /// 여기에 없는 키워드(Charge, Swarm, Rally 등)는 아직 카드 설명으로만 표시되고 효과는 없다.
     /// </summary>
     public static class CardKeywords
     {
-        /// <summary>후열에 있어도 공격할 수 있다. (없으면 후열 유닛은 공격하지 않는다)</summary>
+        /// <summary>원거리: 후열에 있어도 공격할 수 있다. (이 키워드가 없으면 후열 유닛은 공격하지 않는다)</summary>
         public const string Ranged = "Ranged";
 
-        /// <summary>전열에 있을 때 받는 피해가 WallDamageReduction만큼 줄어든다.</summary>
+        /// <summary>방벽: 전열에 있을 때 받는 피해가 WallDamageReduction만큼 줄어든다.</summary>
         public const string Wall = "Wall";
+
+        /// <summary>방벽(Wall)이 줄여주는 피해량.</summary>
         public const int WallDamageReduction = 1;
     }
 }
