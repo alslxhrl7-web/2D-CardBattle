@@ -11,10 +11,24 @@ namespace CardBattle
     /// <summary>카드의 큰 분류.</summary>
     public enum CardKind
     {
-        Unit,      // 장수(유닛): 필드에 내는 카드
-        Spell,     // 전술(스펠): 아직 미구현
-        Weapon,    // 병기(무기): 아직 미구현
-        Formation  // 진(陣): 지속효과 구조물/트랩, 아직 미구현
+        Unit,      // 장수(유닛): 필드 빈 칸에 내는 카드
+        Spell,     // 전술: 보드 위로 끌어다 놓으면 즉시 효과(spellEffect)가 나고 사라지는 카드
+        Weapon,    // 장비: 내 필드의 유닛 위에 끌어다 놓으면 그 유닛의 공격력/체력이 오르는 카드
+        Formation  // 진(陣): 필드 빈 칸에 내는 구조물. 공격력 0이면 공격하지 않고 막기만 한다
+    }
+
+    /// <summary>
+    /// 전술(Spell) 카드가 쓰였을 때 일어나는 효과. 효과의 크기는 CardData.effectValue.
+    /// 새 효과를 만들려면 여기에 이름을 추가하고 CardManager.ApplySpell()에 처리를 한 줄 넣으면 된다.
+    /// </summary>
+    public enum SpellEffect
+    {
+        None,                 // 효과 없음
+        DamageEnemyHero,      // 상대 히어로에게 effectValue 피해
+        DamageAllEnemyUnits,  // 상대 필드의 모든 카드에 effectValue 피해
+        BuffAllAllies,        // 내 필드의 모든 카드 공격력/체력 +effectValue
+        DrawCards,            // 카드 effectValue장 드로우
+        HealHero              // 내 히어로 체력 effectValue 회복 (시작 체력을 넘지 않음)
     }
 
     /// <summary>

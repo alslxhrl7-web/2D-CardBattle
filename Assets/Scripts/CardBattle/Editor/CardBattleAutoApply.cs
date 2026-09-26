@@ -10,7 +10,8 @@ namespace CardBattle.EditorTools
     /// <summary>
     /// 스크립트가 새로 컴파일되면 자동으로 한 번 실행되어, 메뉴를 직접 누르지 않아도 최신 구성을 씬에 적용한다.
     ///   1) 배경 그림이 Sprite로 임포트됐는지 확인(아니면 Sprite로 바꿔 다시 임포트)
-    ///   2) SampleScene을 열고 "씬 자동 구성"(CardBattleSetupMenu.SetupScene)을 실행 → 씬 저장
+    ///   2) SampleScene을 열고 "씬 자동 구성"(CardBattleSetupMenu.SetupScene)과
+    ///      "새 카드·덱·덱 더미 적용"(CardBattleContentSetup.Apply)을 실행 → 씬 저장
     ///   3) 결과를 프로젝트 폴더의 Logs/CardBattleAutoApply.log 에 기록 (Claude가 이 파일로 적용 여부를 확인함)
     /// 같은 ApplyVersion으로는 한 번만 실행된다. 다시 적용하고 싶으면 ApplyVersion 값을 바꾸거나
     /// 메뉴 "CardBattle/자동 적용 다시 실행"을 누른다.
@@ -18,7 +19,7 @@ namespace CardBattle.EditorTools
     [InitializeOnLoad]
     public static class CardBattleAutoApply
     {
-        const string ApplyVersion = "v6-hud-bg-2";                                   // 적용 버전 (바뀌면 다시 한 번 실행됨)
+        const string ApplyVersion = "v8-rules-1";                                    // 적용 버전 (바뀌면 다시 한 번 실행됨)
         const string PrefKey = "CardBattle.AutoApplyVersion";                        // 마지막으로 적용한 버전을 저장하는 키
         const string ScenePath = "Assets/Scenes/SampleScene.unity";                  // 게임 씬
         const string BackgroundPath = "Assets/Resources/Backgrounds/BattleBackground.png"; // 배경 그림
@@ -143,6 +144,12 @@ namespace CardBattle.EditorTools
             }
 
             CardBattleSetupMenu.SetupScene(); // 슬롯 복구, 체력/승패 문구, 조선팩, 팩 UI, 화면 나누기 + 씬 저장
+
+            // 새 카드(장비·전술·진) 14장, 시작 덱, 덱 편집 타일, 덱 더미
+            var contentLog = new List<string>();
+            CardBattleContentSetup.Apply(contentLog);
+            EditorSceneManager.SaveOpenScenes();
+            foreach (var line in contentLog) report.Add("  " + line);
             report.Add("씬: 자동 구성 실행 후 저장");
             DescribeScene(report);
             return true;

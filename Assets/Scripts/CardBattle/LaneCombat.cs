@@ -8,11 +8,10 @@ namespace CardBattle
     ///
     /// 현재 규칙:
     ///  1) 필드는 레인(세로 줄) 단위로 싸운다. 내 레인 N은 상대 레인 N과만 싸운다.
-    ///  2) 전열 유닛은 항상 공격한다. 후열 유닛은 Ranged 키워드가 있을 때만 공격한다.
-    ///  3) 공격 대상: 상대 레인의 전열 유닛 → 없으면 후열 유닛 → 둘 다 없으면 상대 히어로.
-    ///     (그래서 전열 유닛이 후열 유닛과 히어로를 지켜준다)
+    ///  2) 공격은 전열 카드만 한다. 후열은 장비 칸이라 공격하지도, 공격받지도 않는다.
+    ///  3) 공격 대상: 상대 레인의 전열 카드 → 없으면 상대 히어로. (그래서 전열 카드가 히어로를 지켜준다)
     ///  4) 모든 공격은 동시에 계산한 뒤 한꺼번에 적용한다. 서로 때리는 두 유닛은 같이 죽을 수 있다.
-    ///  5) Wall 키워드 유닛은 전열에 있을 때 받는 피해가 CardKeywords.WallDamageReduction만큼 줄어든다.
+    ///  5) Wall 키워드 카드는 받는 피해가 CardKeywords.WallDamageReduction만큼 줄어든다. 단 Ranged 카드의 공격은 Wall을 무시한다.
     ///  6) 체력이 0 이하가 된 유닛은 필드에서 제거된다.
     ///
     /// 연출을 넣을 수 있도록 세 단계로 나눠져 있다:
@@ -107,7 +106,7 @@ namespace CardBattle
         /// </summary>
         static void CollectLaneAttacks(FieldZone attacker, FieldZone defender, int lane, Side defenderSide, Result result)
         {
-            // 전열 → 후열 순서로 공격할 수 있는 유닛을 확인한다
+            // 전열 카드만 공격한다 (후열은 CanAttack에서 걸러짐)
             foreach (bool attackerInFront in new[] { true, false })
             {
                 var slot = attacker.SlotAt(attackerInFront, lane);
@@ -116,8 +115,8 @@ namespace CardBattle
 
                 bool targetInFront;
                 var target = FindTarget(defender, lane, out targetInFront);
-                int damage = unit.data.attack;
-                if (target != null) damage = DamageAfterDefense(target, targetInFront, damage); // 방어 효과 적용
+                int damage = unit.currentAttack;
+                if (target != null) damage = DamageAfterDefense(unit, target, targetInFront, damage); // 방어 효과 적용
 
                 result.hits.Add(new Hit { lane = lane, attacker = unit, target = target, targetSide = defenderSide, damage = damage });
 
@@ -129,34 +128,32 @@ namespace CardBattle
             }
         }
 
-        /// <summary>이 유닛이 공격할 수 있는지: 살아있고, 공격력이 있고, 전열이거나 원거리여야 한다.</summary>
+        /// <summary>이 카드가 공격할 수 있는지: 전열에 있고, 살아있고, 유닛·진이며, 공격력이 있어야 한다. (후열은 장비 칸이라 공격하지 않음)</summary>
         static bool CanAttack(CardView unit, bool inFront)
         {
-            if (unit == null || unit.data == null || unit.IsDead) return false;
-            if (unit.data.attack <= 0) return false;
-            return inFront || unit.data.HasKeyword(CardKeywords.Ranged);
+            if (!inFront) return false;
+            if (unit == null || unit.data == null || unit.IsDead || !unit.data.IsFieldCard) return false;
+            return unit.currentAttack > 0;
         }
 
-        /// <summary>상대 레인에서 맞을 유닛을 찾는다(전열 우선). 없으면 null = 히어로가 맞는다.</summary>
+        /// <summary>상대 레인에서 맞을 카드를 찾는다: 전열 카드만 맞는다(후열 장비는 맞지 않음). 없으면 null = 히어로가 맞는다.</summary>
         static CardView FindTarget(FieldZone defender, int lane, out bool inFront)
         {
-            // 전열 확인
             var front = defender.SlotAt(true, lane);
             var frontUnit = front != null ? front.OccupantView : null;
-            if (frontUnit != null && !frontUnit.IsDead) { inFront = true; return frontUnit; }
-
-            // 전열이 비었으면 후열 확인
-            var back = defender.SlotAt(false, lane);
-            var backUnit = back != null ? back.OccupantView : null;
-            inFront = false;
-            if (backUnit != null && !backUnit.IsDead) return backUnit;
+            inFront = true;
+            if (frontUnit != null && !frontUnit.IsDead) return frontUnit;
             return null;
         }
 
-        /// <summary>맞는 쪽의 방어 효과(현재는 Wall)를 반영한 최종 피해. 0 아래로는 내려가지 않는다.</summary>
-        static int DamageAfterDefense(CardView target, bool targetInFront, int damage)
+        /// <summary>
+        /// 맞는 쪽의 방어 효과(현재는 Wall)를 반영한 최종 피해. 0 아래로는 내려가지 않는다.
+        /// 공격하는 쪽이 Ranged(원거리)면 Wall 효과를 무시한다.
+        /// </summary>
+        static int DamageAfterDefense(CardView attacker, CardView target, bool targetInFront, int damage)
         {
-            if (targetInFront && target.data != null && target.data.HasKeyword(CardKeywords.Wall))
+            bool ignoresWall = attacker != null && attacker.data != null && attacker.data.HasKeyword(CardKeywords.Ranged);
+            if (!ignoresWall && targetInFront && target.data != null && target.data.HasKeyword(CardKeywords.Wall))
                 damage -= CardKeywords.WallDamageReduction;
             return damage < 0 ? 0 : damage;
         }

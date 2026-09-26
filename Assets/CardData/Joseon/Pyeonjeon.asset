@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7053b5164d8eb24ab5cff621008ec25, type: 3}
+  m_Name: Pyeonjeon
+  m_EditorClassIdentifier: Assembly-CSharp::CardBattle.CardData
+  cardNameKo: "\uD3B8\uC804"
+  cardNameEn: Pyeonjeon Arrows
+  faction: 0
+  cardKind: 2
+  rarity: 0
+  cost: 1
+  attack: 2
+  health: 0
+  spellEffect: 0
+  effectValue: 0
+  keywordText: "\uC7A5\uBE44: \uD6C4\uC5F4\uC5D0 \uB193\uC73C\uBA74 \uC55E \uCE74\uB4DC \uACF5\uACA9\uB825 +2"
+  flavorText: "\uD1B5\uC544\uC5D0 \uB123\uC5B4 \uC3D8\uB294 \uC9E7\uC740 \uD654\uC0B4, \uC560\uAE30\uC0B4."
+  portrait: {fileID: 21300000, guid: 139076c3fa2e43f0ba3248188a8ea233, type: 3}

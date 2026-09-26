@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7053b5164d8eb24ab5cff621008ec25, type: 3}
+  m_Name: Surprise_Raid
+  m_EditorClassIdentifier: Assembly-CSharp::CardBattle.CardData
+  cardNameKo: "\uAE30\uC2B5"
+  cardNameEn: Surprise Raid
+  faction: 1
+  cardKind: 1
+  rarity: 0
+  cost: 2
+  attack: 0
+  health: 0
+  spellEffect: 3
+  effectValue: 1
+  keywordText: "\uC804\uC220: \uC544\uAD70 \uD544\uB4DC \uC804\uCCB4 +1/+1"
+  flavorText: "\uB208\uBCF4\uB77C\uB97C \uB6AB\uACE0 \uAE30\uBCD1\uC774 \uB4E4\uC774\uB2E5\uCE5C\uB2E4."
+  portrait: {fileID: 21300000, guid: f99c422babe74e569af5e4c03cdfb440, type: 3}

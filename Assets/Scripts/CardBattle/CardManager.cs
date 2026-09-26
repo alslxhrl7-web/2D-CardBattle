@@ -69,6 +69,8 @@ namespace CardBattle
         [System.NonSerialized] public List<CardData> enemyDrawPile = new List<CardData>();
 
         bool gameOver; // 승패가 갈렸는지
+        bool playerDeckedOut; // 플레이어가 뽑을 카드가 없는데 뽑으려 했는지 (패배 조건)
+        bool enemyDeckedOut;  // 상대가 뽑을 카드가 없는데 뽑으려 했는지 (패배 조건)
 
         // 이번 턴에 각 편이 낸 카드 수 (첫 턴 제한 GameRules.FirstTurnCardLimit 확인용, 턴이 바뀌면 0으로)
         int playerCardsPlayedThisTurn;
@@ -150,7 +152,9 @@ namespace CardBattle
             enemyMana.Reset();
             playerHealth = GameRules.StartingHealth;
             enemyHealth = GameRules.StartingHealth;
-            SetGameOver(false, "", GamePalette.ResultDraw);
+            playerDeckedOut = false;
+            enemyDeckedOut = false;
+            SetGameOver(false, "", GamePalette.ResultDraw, "");
             ResetCardsPlayedThisTurn();
 
             // 3) 덱을 섞어 드로우 더미를 만들고 시작 손패를 번갈아 뽑는다
@@ -161,10 +165,11 @@ namespace CardBattle
                 DrawCard(Side.Player);
                 DrawCard(Side.Enemy);
             }
+            CheckGameOver(); // 덱이 시작 손패보다 적으면 바로 끝난다
 
             // 4) 화면 갱신 후 상대 첫 수
             RefreshAllDisplays();
-            PlayEnemyCards(); // 상대는 시작하자마자 첫 군력으로 낼 수 있는 카드를 낸다
+            if (!gameOver) PlayEnemyCards(); // 상대는 시작하자마자 첫 군력으로 낼 수 있는 카드를 낸다
         }
 
         /// <summary>
@@ -229,21 +234,25 @@ namespace CardBattle
             enemyMana.RefillForTurn(turnNumber);
             DrawCard(Side.Player);
             DrawCard(Side.Enemy);
+            CheckGameOver(); // 양쪽이 다 뽑은 뒤 판정 (둘 다 덱이 바닥났으면 무승부)
 
             RefreshAllDisplays();
-            PlayEnemyCards(); // 상대가 이번 턴 카드를 낸다
+            if (!gameOver) PlayEnemyCards(); // 상대가 이번 턴 카드를 낸다
         }
 
         /// <summary>
-        /// 손패 카드를 필드 슬롯에 내는 유일한 입구. 드래그(CardDragHandler)와 상대 AI가 모두 이 함수를 쓴다.
-        /// 실패 조건: 게임 종료 / 카드·슬롯 없음 / 슬롯이 이미 참 / 군력 부족.
+        /// 손패의 유닛·진 카드를 필드 전열 칸에 내는 유일한 입구. 드래그(CardDragHandler)와 상대 AI가 모두 이 함수를 쓴다.
+        /// 실패 조건: 게임 종료 / 카드·슬롯 없음 / 전열 칸이 아님(후열은 장비 칸) / 슬롯이 이미 참 / 군력 부족.
+        /// 같은 레인 후열에 장비가 놓여 있으면 새로 들어온 카드가 그 장비 수치만큼 바로 강해진다.
         /// </summary>
         public bool TryPlaceCard(CardView view, HandZone fromHand, FieldSlot slot)
         {
             if (gameOver || busy) return false; // 게임이 끝났거나 연출 중이면 못 냄
             if (view == null || view.data == null || fromHand == null || slot == null || !slot.IsEmpty) return false;
+            if (!view.data.IsFieldCard) return false; // 장비·전술 카드는 빈 칸에 놓을 수 없다 (TryEquip / TryCastSpell 사용)
 
             Side side = SideOf(fromHand);                              // 어느 편의 카드인지
+            if (!FieldOf(side).IsFrontSlot(slot)) return false;        // 유닛·진은 내 전열 칸에만
             if (!CanPlayMoreThisTurn(side)) return false;              // 첫 턴 장수 제한에 걸리면 실패
             if (!ManaOf(side).TrySpend(view.data.cost)) return false;  // 군력이 부족하면 실패
 
@@ -256,8 +265,154 @@ namespace CardBattle
             if (side == Side.Player) playerCardsPlayedThisTurn++; // 이번 턴에 낸 장수 +1
             else enemyCardsPlayedThisTurn++;
 
+            var equipment = EquipmentBehind(FieldOf(side), slot); // 같은 레인 후열 장비가 있으면 강화
+            if (equipment != null) view.ApplyBuff(equipment.data.attack, equipment.data.health);
+
             RefreshManaDisplay();
             return true;
+        }
+
+        /// <summary>
+        /// 장비 카드를 내 필드의 후열 빈 칸(slot)에 놓는다. 같은 레인 전열 카드가 장비 수치만큼 강해지고,
+        /// 나중에 그 전열 칸에 새로 들어오는 카드도 강해진다(장비는 후열에 계속 남아 있음).
+        /// 실패 조건: 게임 종료·연출 중 / 장비가 아님 / 내 후열 빈 칸이 아님 / 군력 부족.
+        /// </summary>
+        public bool TryEquip(CardView view, HandZone fromHand, FieldSlot slot)
+        {
+            if (!CanUseFromHand(view, fromHand) || !view.data.IsEquipment) return false;
+            Side side = SideOf(fromHand);
+            var field = FieldOf(side);
+            if (slot == null || !slot.IsEmpty || !field.IsBackSlot(slot)) return false; // 내 후열 빈 칸에만
+            if (!ManaOf(side).TrySpend(view.data.cost)) return false;
+
+            fromHand.RemoveCard(view.transform);
+            field.PlaceCard(view.transform, slot); // 장비 카드는 후열 칸에 그대로 남는다
+            var drag = view.GetComponent<CardDragHandler>();
+            if (drag != null) drag.ClearHand();
+
+            bool front;
+            int lane = field.LaneOf(slot, out front);
+            var unit = field.SlotAt(true, lane) != null ? field.SlotAt(true, lane).OccupantView : null;
+            if (unit != null) unit.ApplyBuff(view.data.attack, view.data.health); // 앞의 카드를 바로 강화
+
+            if (side == Side.Player) playerCardsPlayedThisTurn++;
+            else enemyCardsPlayedThisTurn++;
+            RefreshManaDisplay();
+            return true;
+        }
+
+        /// <summary>전열 칸(frontSlot) 바로 뒤 후열에 놓인 장비 카드. 없으면 null.</summary>
+        public static CardView EquipmentBehind(FieldZone field, FieldSlot frontSlot)
+        {
+            if (field == null) return null;
+            bool front;
+            int lane = field.LaneOf(frontSlot, out front);
+            if (lane < 0 || !front) return null;
+            var back = field.SlotAt(false, lane);
+            var eq = back != null ? back.OccupantView : null;
+            return eq != null && eq.data != null && eq.data.IsEquipment ? eq : null;
+        }
+
+        /// <summary>
+        /// 전술 카드를 쓴다. 효과(spellEffect)가 바로 일어나고 카드는 사라진다.
+        /// 실패 조건: 게임 종료·연출 중 / 전술이 아님 / 군력 부족.
+        /// </summary>
+        public bool TryCastSpell(CardView view, HandZone fromHand)
+        {
+            if (!CanUseFromHand(view, fromHand) || !view.data.IsSpell) return false;
+            Side side = SideOf(fromHand);
+            if (!ManaOf(side).TrySpend(view.data.cost)) return false;
+
+            var data = view.data;
+            ConsumeFromHand(view, fromHand, side); // 먼저 손패에서 없애고 (드로우 효과가 손패 자리를 쓸 수 있게)
+            ApplySpell(side, data);                // 효과를 낸다
+            return true;
+        }
+
+        /// <summary>
+        /// 전술 효과를 실제로 적용한다. side = 전술을 쓴 편.
+        /// 새 효과를 추가하려면 SpellEffect에 이름을 넣고 여기에 case를 하나 추가한다.
+        /// </summary>
+        public void ApplySpell(Side side, CardData data)
+        {
+            if (data == null) return;
+            Side enemy = side.Opponent();
+            int v = data.effectValue;
+            switch (data.spellEffect)
+            {
+                case SpellEffect.DamageEnemyHero:
+                    DamageHero(enemy, v);
+                    break;
+                case SpellEffect.DamageAllEnemyUnits:
+                    foreach (var unit in FieldUnits(FieldOf(enemy))) unit.ApplyDamage(v);
+                    LaneCombat.RemoveDead(playerField, enemyField); // 체력이 0이 된 카드 제거
+                    break;
+                case SpellEffect.BuffAllAllies:
+                    foreach (var unit in FieldUnits(FieldOf(side))) unit.ApplyBuff(v, v);
+                    break;
+                case SpellEffect.DrawCards:
+                    for (int i = 0; i < v; i++) DrawCard(side);
+                    CheckGameOver(); // 뽑을 카드가 없었으면 진다
+                    break;
+                case SpellEffect.HealHero:
+                    ChangeHealth(side, Mathf.Min(v, GameRules.StartingHealth - HealthOf(side))); // 시작 체력까지만
+                    break;
+            }
+        }
+
+        /// <summary>손패에서 카드를 쓸 수 있는 기본 조건(게임 진행 중, 연출 중 아님, 첫 턴 장수 제한).</summary>
+        bool CanUseFromHand(CardView view, HandZone fromHand)
+        {
+            if (gameOver || busy) return false;
+            if (view == null || view.data == null || fromHand == null) return false;
+            return CanPlayMoreThisTurn(SideOf(fromHand));
+        }
+
+        /// <summary>장비·전술 카드를 다 쓴 뒤: 손패에서 빼고 오브젝트를 없애고, 이번 턴 낸 장수를 센다.</summary>
+        void ConsumeFromHand(CardView view, HandZone fromHand, Side side)
+        {
+            fromHand.RemoveCard(view.transform);
+            var drag = view.GetComponent<CardDragHandler>();
+            if (drag != null) drag.ClearHand();
+            UnityUtil.DestroySafe(view.gameObject);
+
+            if (side == Side.Player) playerCardsPlayedThisTurn++;
+            else enemyCardsPlayedThisTurn++;
+            RefreshManaDisplay();
+        }
+
+        /// <summary>이 카드가 해당 편 필드 위에 놓여 있는지.</summary>
+        public bool IsOnField(CardView view, Side side)
+        {
+            var field = FieldOf(side);
+            if (field == null || view == null) return false;
+            foreach (var unit in FieldCards(field)) if (unit == view) return true;
+            return false;
+        }
+
+        /// <summary>필드 전열에 놓인 유닛·진 카드들 (후열의 장비는 빼고). 전술 효과·AI가 사용.</summary>
+        public static List<CardView> FieldUnits(FieldZone field)
+        {
+            var list = new List<CardView>();
+            foreach (var c in FieldCards(field)) if (c.data != null && c.data.IsFieldCard) list.Add(c);
+            return list;
+        }
+
+        /// <summary>필드의 모든 슬롯(전열+후열)에 놓인 카드들 (장비 포함).</summary>
+        public static List<CardView> FieldCards(FieldZone field)
+        {
+            var list = new List<CardView>();
+            if (field == null) return list;
+            foreach (var row in new[] { field.frontRow, field.backRow })
+            {
+                if (row == null) continue;
+                foreach (var slot in row)
+                {
+                    var unit = slot != null ? slot.OccupantView : null;
+                    if (unit != null) list.Add(unit);
+                }
+            }
+            return list;
         }
 
         /// <summary>
@@ -287,14 +442,19 @@ namespace CardBattle
         // ================= 드로우 =================
 
         /// <summary>
-        /// 해당 편의 드로우 더미 맨 위에서 한 장을 뽑아 손패에 넣는다.
-        /// 더미가 비었으면 아무 일도 없고(탈진 페널티는 미구현), 손패가 가득 찼으면 뽑은 카드는 버려진다(번).
+        /// 해당 편의 드로우 더미 맨 위에서 한 장을 뽑아 손패에 넣는다. 손패가 가득 찼으면 뽑은 카드는 버려진다(번).
+        /// 더미가 비어 있으면 "덱 소진"으로 표시되고, 다음 CheckGameOver()에서 그 편이 진다.
         /// </summary>
         public void DrawCard(Side side)
         {
             var pile = DrawPileOf(side);
             var hand = HandOf(side);
-            if (hand != null && pile != null && pile.Count > 0)
+            if (pile == null || pile.Count == 0)
+            {
+                if (side == Side.Player) playerDeckedOut = true; // 뽑을 카드가 없다 → 패배 조건
+                else enemyDeckedOut = true;
+            }
+            else if (hand != null)
             {
                 var card = pile[pile.Count - 1]; // 리스트 끝 = 더미 맨 위
                 pile.RemoveAt(pile.Count - 1);
@@ -372,13 +532,17 @@ namespace CardBattle
                     handCards.Add(view != null ? view.data : null);
                 }
 
-                int pick = EnemyAI.ChooseCardToPlay(handCards, enemyMana.current); // 낼 카드 고르기
+                bool hasEmptyFront = enemyField.GetFirstEmpty(true) != null;       // 유닛·진을 놓을 칸
+                bool hasEquipSlot = EnemyAI.ChooseEquipSlot(enemyField) != null;   // 장비를 놓을 칸 (앞에 유닛이 있는 후열)
+                int pick = EnemyAI.ChooseCardToPlay(handCards, enemyMana.current, hasEmptyFront, hasEquipSlot); // 낼 카드 고르기
                 if (pick < 0) break; // 낼 카드 없음
 
-                var slot = EnemyAI.ChooseSlot(enemyField, handCards[pick]); // 놓을 자리 고르기
-                if (slot == null) break; // 필드가 꽉 참
-
-                if (!TryPlaceCard(handViews[pick], enemyHand, slot)) break; // 안전장치
+                var card = handCards[pick];
+                bool played;
+                if (card.IsSpell) played = TryCastSpell(handViews[pick], enemyHand);                                     // 전술
+                else if (card.IsEquipment) played = TryEquip(handViews[pick], enemyHand, EnemyAI.ChooseEquipSlot(enemyField)); // 장비
+                else played = TryPlaceCard(handViews[pick], enemyHand, EnemyAI.ChooseSlot(enemyField, card));             // 유닛·진
+                if (!played) break; // 안전장치 (못 냈으면 멈춘다)
             }
         }
 
@@ -408,25 +572,38 @@ namespace CardBattle
             RefreshHealthDisplay();
         }
 
-        /// <summary>어느 쪽 체력이 0이 됐는지 보고 승리/패배/무승부를 정한다.</summary>
+        /// <summary>
+        /// 패배 조건을 확인해서 승리/패배/무승부를 정한다.
+        /// 패배 조건: 체력이 0이 됨 / 뽑을 카드가 없는데 뽑아야 함(덱 소진). 양쪽이 동시에 걸리면 무승부.
+        /// </summary>
         void CheckGameOver()
         {
-            bool playerDead = playerHealth <= 0;
-            bool enemyDead = enemyHealth <= 0;
-            if (!playerDead && !enemyDead) return; // 아직 둘 다 살아있음
+            if (gameOver) return;
+            bool playerLost = playerHealth <= 0 || playerDeckedOut;
+            bool enemyLost = enemyHealth <= 0 || enemyDeckedOut;
+            if (!playerLost && !enemyLost) return; // 아직 둘 다 버티는 중
 
-            if (playerDead && enemyDead) SetGameOver(true, GameTexts.Draw, GamePalette.ResultDraw);   // 무승부
-            else if (playerDead) SetGameOver(true, GameTexts.Defeat, GamePalette.ResultDefeat);     // 졌다
-            else SetGameOver(true, GameTexts.Victory, GamePalette.ResultVictory);                    // 이겼다
+            if (playerLost && enemyLost) SetGameOver(true, GameTexts.Draw, GamePalette.ResultDraw, GameTexts.ReasonBoth);
+            else if (playerLost)
+                SetGameOver(true, GameTexts.Defeat, GamePalette.ResultDefeat, playerHealth <= 0 ? GameTexts.ReasonMyHealth : GameTexts.ReasonMyDeck);
+            else
+                SetGameOver(true, GameTexts.Victory, GamePalette.ResultVictory, enemyHealth <= 0 ? GameTexts.ReasonEnemyHealth : GameTexts.ReasonEnemyDeck);
         }
 
-        /// <summary>게임 종료 상태를 바꾸고, 승패 배너(문구+색)를 보이거나 숨긴다.</summary>
-        void SetGameOver(bool over, string message, Color color)
+        /// <summary>뽑을 카드가 없어서 진 상태인지 (확인용).</summary>
+        public bool IsDeckedOut(Side side) { return side == Side.Player ? playerDeckedOut : enemyDeckedOut; }
+
+        /// <summary>게임 종료 상태를 바꾸고, 승패 배너(문구+색+이유)를 보이거나 숨긴다.</summary>
+        void SetGameOver(bool over, string message, Color color, string reason)
         {
             gameOver = over;
             if (gameOverText == null) return;
             gameOverText.text = message;
             gameOverText.color = color;
+            var hint = gameOverText.transform.Find("Hint");
+            var hintText = hint != null ? hint.GetComponent<TextMesh>() : null;
+            if (hintText != null)
+                hintText.text = string.IsNullOrEmpty(reason) ? GameTexts.GameOverHint : reason + "\n" + GameTexts.GameOverHint;
             gameOverText.gameObject.SetActive(over);
         }
 

@@ -4,6 +4,7 @@ namespace CardBattle
 {
     /// <summary>
     /// 한쪽 편의 필드 전체. 전열(frontRow)/후열(backRow)로 구성되며, 같은 번호끼리가 하나의 "레인(세로 줄)"이다.
+    /// 전열 = 유닛·진을 놓고 싸우는 칸, 후열 = 장비를 놓는 칸(같은 레인 전열 카드를 강화).
     /// 예: frontRow[2]와 backRow[2]는 같은 레인이고, 상대 필드의 frontRow[2]/backRow[2]와 마주본다.
     /// 배열 순서는 씬에 배치된 슬롯의 왼쪽→오른쪽 순서를 따른다(메뉴 "씬 자동 구성"이 x좌표로 정렬해줌).
     /// </summary>
@@ -29,6 +30,30 @@ namespace CardBattle
             var row = front ? frontRow : backRow;
             if (row == null || lane < 0 || lane >= row.Length) return null;
             return row[lane];
+        }
+
+        /// <summary>이 슬롯이 몇 번째 레인인지. 이 필드의 슬롯이 아니면 -1. front에는 전열이면 true.</summary>
+        public int LaneOf(FieldSlot slot, out bool front)
+        {
+            front = false;
+            if (slot == null) return -1;
+            if (frontRow != null) for (int i = 0; i < frontRow.Length; i++) if (frontRow[i] == slot) { front = true; return i; }
+            if (backRow != null) for (int i = 0; i < backRow.Length; i++) if (backRow[i] == slot) return i;
+            return -1;
+        }
+
+        /// <summary>이 슬롯이 이 필드의 전열 칸인지.</summary>
+        public bool IsFrontSlot(FieldSlot slot)
+        {
+            bool front;
+            return LaneOf(slot, out front) >= 0 && front;
+        }
+
+        /// <summary>이 슬롯이 이 필드의 후열 칸(장비 칸)인지.</summary>
+        public bool IsBackSlot(FieldSlot slot)
+        {
+            bool front;
+            return LaneOf(slot, out front) >= 0 && !front;
         }
 
         /// <summary>지정한 줄에서 가장 왼쪽의 빈 슬롯. 없으면 null.</summary>

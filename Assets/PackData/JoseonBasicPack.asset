@@ -15,12 +15,19 @@ MonoBehaviour:
   packName: "\uC870\uC120 \uAE30\uBCF8\uD329"
   cardsPerPack: 5
   cardPool:
+  - {fileID: 11400000, guid: e8afdfd2f9f5017448dc690dffd09b5e, type: 2}
   - {fileID: 11400000, guid: 8ae39ee950cbaa74a9ed454312590f66, type: 2}
+  - {fileID: 11400000, guid: a1988ac5c75939e4bb030e6b0c2db862, type: 2}
   - {fileID: 11400000, guid: 4f641bfaa5ad5d64ba74bc71b18ae366, type: 2}
+  - {fileID: 11400000, guid: 78f5f2d5bc4d64c4e8e79f2e53501a43, type: 2}
   - {fileID: 11400000, guid: ea99c084aa85b4047a7833391d228658, type: 2}
   - {fileID: 11400000, guid: 963cac88f65f4dd4789af4187ce5ccdc, type: 2}
+  - {fileID: 11400000, guid: b80e639f96f650147acf2fba2dd3f7c1, type: 2}
   - {fileID: 11400000, guid: 364db8dfb9ea6024b89f486cc637ceda, type: 2}
+  - {fileID: 11400000, guid: 46d2c06a48d911d4cb7d5a00c1ea8591, type: 2}
   - {fileID: 11400000, guid: 077c7db80edad514f8297a77324f1fa1, type: 2}
+  - {fileID: 11400000, guid: 838c57589978afc4faf483c745f42888, type: 2}
+  - {fileID: 11400000, guid: bc95091e2ea3a6b44a8fa5e47fbf0369, type: 2}
   rarityWeights:
   - rarity: 0
     weight: 70

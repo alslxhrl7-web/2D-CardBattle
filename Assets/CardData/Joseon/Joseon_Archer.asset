@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7053b5164d8eb24ab5cff621008ec25, type: 3}
+  m_Name: Joseon_Archer
+  m_EditorClassIdentifier: Assembly-CSharp::CardBattle.CardData
+  cardNameKo: "\uC870\uC120 \uAD81\uC218"
+  cardNameEn: Joseon Archer
+  faction: 0
+  cardKind: 0
+  rarity: 0
+  cost: 2
+  attack: 2
+  health: 2
+  spellEffect: 0
+  effectValue: 0
+  keywordText: "Ranged: \uC0C1\uB300 Wall \uBB34\uC2DC"
+  flavorText: "\uAC01\uAD81 \uD55C \uC790\uB8E8\uBA74 \uBC31 \uBCF4 \uBC16\uB3C4 \uB450\uB835\uC9C0 \uC54A\uB2E4."
+  portrait: {fileID: 21300000, guid: 4a0acbe69d1b4bbdb2a87b38f2c37f05, type: 3}

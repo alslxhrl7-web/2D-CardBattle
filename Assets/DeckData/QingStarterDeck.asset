@@ -16,14 +16,26 @@ MonoBehaviour:
   faction: 1
   entries:
   - card: {fileID: 11400000, guid: 9ae1385081e72bb4682f0ffc89eaa8e6, type: 2}
-    count: 3
-  - card: {fileID: 11400000, guid: 1bd0ace622f01e549977a5b9839aa8bf, type: 2}
     count: 2
-  - card: {fileID: 11400000, guid: 91f1cb4cf06f994488a727a3cc8904fc, type: 2}
-    count: 1
   - card: {fileID: 11400000, guid: ab6bdc02230c6c747a674d118cc5056c, type: 2}
-    count: 3
+    count: 2
   - card: {fileID: 11400000, guid: ee134cc9d699b9b4d8545a31fdd14bfb, type: 2}
-    count: 3
+    count: 2
+  - card: {fileID: 11400000, guid: 1bd0ace622f01e549977a5b9839aa8bf, type: 2}
+    count: 1
   - card: {fileID: 11400000, guid: 62d216142921d4e4597ea617e2458cd5, type: 2}
     count: 1
+  - card: {fileID: 11400000, guid: 9dc48b9e77cf06941bf475bcfe980479, type: 2}
+    count: 2
+  - card: {fileID: 11400000, guid: c7a1261811797c7459b1a97a3392f709, type: 2}
+    count: 2
+  - card: {fileID: 11400000, guid: 6e452ea44c4d17941b458839fea9c624, type: 2}
+    count: 2
+  - card: {fileID: 11400000, guid: 7b95fc9b9f6351b4e92b746ecf38c19e, type: 2}
+    count: 2
+  - card: {fileID: 11400000, guid: c437804d19574774ab76cc81aeec5c42, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: fef828e723db95148818c058cf96b683, type: 2}
+    count: 2
+  - card: {fileID: 11400000, guid: 1ab98aeba9c2fb44dbd9a8bf4244ea34, type: 2}
+    count: 2

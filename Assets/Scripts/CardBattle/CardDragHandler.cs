@@ -5,7 +5,7 @@ namespace CardBattle
 {
     /// <summary>
     /// 손패의 카드 하나를 마우스로 집어서(OnMouseDown) 드래그하고(OnMouseDrag) 놓으면(OnMouseUp)
-    /// 그 아래 있는 FieldSlot에 배치를 시도하는 컴포넌트. 카드 프리팹 루트에 붙는다.
+    /// 그 아래 있는 FieldSlot에 배치를 시도하는 컴포넌트. (유닛·진은 전열 칸에, 장비는 후열 칸에, 전술은 보드 위 아무 곳에 놓는다) 카드 프리팹 루트에 붙는다.
     /// Unity의 OnMouse* 메시지를 받으려면 이 오브젝트에 Collider2D가 있어야 한다(프리팹에 BoxCollider2D 추가됨).
     /// 이 프로젝트는 Active Input Handling이 새 Input System 전용으로 설정돼 있어, 예전 Input 클래스 대신
     /// UnityEngine.InputSystem의 Mouse.current로 마우스 좌표를 읽는다.
@@ -20,6 +20,7 @@ namespace CardBattle
         bool dragging;        // 지금 드래그 중인지
 
         const int DragSortingBase = 999; // 드래그 중인 카드는 다른 모든 카드보다 항상 위에 그려지도록 하는 sortingOrder 버킷
+        const float SpellCastRise = 1.5f; // 전술 카드를 손패 위치보다 이만큼(월드 유닛) 위로 끌어 올려 놓으면 사용된다
 
         /// <summary>시작할 때 같은 오브젝트의 CardView를 찾아둔다.</summary>
         void Awake()
@@ -86,17 +87,49 @@ namespace CardBattle
             return world;
         }
 
-        /// <summary>놓은 위치의 슬롯에 카드를 내 본다. 실패하면 손패 자리로 되돌아간다.</summary>
+        /// <summary>
+        /// 놓은 위치에 따라 카드를 내 본다. 실패하면 손패 자리로 되돌아간다.
+        ///   유닛·진: 전열 빈 칸 위에 놓기   장비: 후열 빈 칸(또는 그 앞의 내 전열 카드) 위에 놓기   전술: 손패보다 위(보드 쪽)로 끌어 올려 놓기
+        /// </summary>
         void TryDrop()
         {
-            FieldSlot slot = FindSlotUnderCard();
-
-            if (slot != null && slot.IsEmpty && manager.TryPlaceCard(view, myHand, slot))
-                return; // 필드에 정상적으로 낸 경우
+            var data = view.data;
+            bool done = false;
+            if (data != null && data.IsSpell)
+            {
+                // 손패 위치보다 SpellCastRise 이상 끌어 올렸으면 사용
+                if (transform.position.y > myHand.transform.position.y + SpellCastRise)
+                    done = manager.TryCastSpell(view, myHand);
+            }
+            else if (data != null && data.IsEquipment)
+            {
+                done = manager.TryEquip(view, myHand, FindEquipSlotUnderCard());
+            }
+            else
+            {
+                FieldSlot slot = FindSlotUnderCard();
+                done = slot != null && slot.IsEmpty && manager.TryPlaceCard(view, myHand, slot);
+            }
+            if (done) return; // 정상적으로 냈음
 
             // 실패(슬롯 없음 / 이미 참 / 군력 부족): 손패 부채꼴 자리로 되돌아간다.
             // 카드가 아직 손패 목록에 있으므로 Relayout()이 원래 자리와 겹침 순서까지 되돌려준다.
             if (myHand != null) myHand.Relayout();
+        }
+
+        /// <summary>
+        /// 장비를 놓을 후열 칸을 찾는다. 후열 칸 위에 놓았으면 그 칸, 내 전열 카드(또는 전열 칸) 위에 놓았으면
+        /// 같은 레인의 후열 칸을 돌려준다(카드 위에 바로 떨어뜨려도 뒤쪽 장비 칸에 들어가도록).
+        /// </summary>
+        FieldSlot FindEquipSlotUnderCard()
+        {
+            var slot = FindSlotUnderCard();
+            if (slot == null) return null;
+            var field = manager.FieldOf(Side.Player);
+            bool front;
+            int lane = field.LaneOf(slot, out front);
+            if (lane < 0) return null;            // 상대 필드 칸
+            return front ? field.SlotAt(false, lane) : slot;
         }
 
         /// <summary>

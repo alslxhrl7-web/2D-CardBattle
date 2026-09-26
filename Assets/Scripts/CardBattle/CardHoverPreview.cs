@@ -69,9 +69,14 @@ namespace CardBattle
             if (pv != null)
             {
                 pv.Setup(view.data);
-                // 필드에서 체력이 깎였으면 깎인 체력을 보여준다
-                if (view.currentHealth > 0 && view.currentHealth != view.data.health)
-                    UnityUtil.SetText(pv.hpText, view.currentHealth.ToString());
+                // 필드에서 체력이 깎였거나 장비로 스탯이 올랐으면 지금 값을 보여준다 (장비·전술 카드는 적힌 값 그대로)
+                bool changed = view.currentHealth != view.data.health || view.currentAttack != view.data.attack;
+                if (view.data.IsFieldCard && view.currentHealth > 0 && changed)
+                {
+                    pv.currentAttack = view.currentAttack;
+                    pv.currentHealth = view.currentHealth;
+                    pv.RefreshStatTexts();
+                }
                 pv.SetLayerBase(PreviewLayerBase);
             }
 

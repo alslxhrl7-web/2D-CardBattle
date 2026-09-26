@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7053b5164d8eb24ab5cff621008ec25, type: 3}
+  m_Name: Warrior_Monk
+  m_EditorClassIdentifier: Assembly-CSharp::CardBattle.CardData
+  cardNameKo: "\uC2B9\uBCD1"
+  cardNameEn: Warrior Monk
+  faction: 0
+  cardKind: 0
+  rarity: 0
+  cost: 3
+  attack: 2
+  health: 5
+  spellEffect: 0
+  effectValue: 0
+  keywordText: "Wall: \uBC1B\uB294 \uD53C\uD574 -1"
+  flavorText: "\uC0B0\uBB38\uC744 \uB2EB\uACE0 \uB098\uB77C\uB97C \uC9C0\uD0A4\uB7EC \uB0B4\uB824\uC654\uB2E4."
+  portrait: {fileID: 21300000, guid: 5d151113271148f4afaf59a058fa1cc1, type: 3}

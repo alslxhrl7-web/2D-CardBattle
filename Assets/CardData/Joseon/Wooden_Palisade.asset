@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7053b5164d8eb24ab5cff621008ec25, type: 3}
+  m_Name: Wooden_Palisade
+  m_EditorClassIdentifier: Assembly-CSharp::CardBattle.CardData
+  cardNameKo: "\uBAA9\uCC45"
+  cardNameEn: Wooden Palisade
+  faction: 0
+  cardKind: 3
+  rarity: 0
+  cost: 2
+  attack: 0
+  health: 6
+  spellEffect: 0
+  effectValue: 0
+  keywordText: "Wall: \uBC1B\uB294 \uD53C\uD574 -1"
+  flavorText: "\uBFB0\uC871\uD55C \uB9D0\uB69D\uC774 \uAE30\uBCD1\uC758 \uBC1C\uC744 \uBB36\uB294\uB2E4."
+  portrait: {fileID: 21300000, guid: 2987b184396f4ff08a2839bc55f3b248, type: 3}

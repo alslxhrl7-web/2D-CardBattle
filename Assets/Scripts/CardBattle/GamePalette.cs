@@ -29,6 +29,27 @@ namespace CardBattle
         public static readonly Color Qing = new Color(0.42f, 0.10f, 0.09f);   // 청: 짙은 적갈색
         public static readonly Color Ming = new Color(0.45f, 0.36f, 0.10f);   // 명: 황토색(확장용)
 
+        // ---- 카드 종류 표시 글자 색 ----
+        public static readonly Color KindWeapon = new Color(0.95f, 0.78f, 0.35f);    // 장비: 금색
+        public static readonly Color KindSpell = new Color(0.55f, 0.85f, 1.00f);     // 전술: 하늘색
+        public static readonly Color KindFormation = new Color(0.70f, 0.90f, 0.55f); // 진: 연두색
+
+        /// <summary>카드 종류 표시 글자 색.</summary>
+        public static Color KindColor(CardKind kind)
+        {
+            switch (kind)
+            {
+                case CardKind.Weapon:    return KindWeapon;
+                case CardKind.Spell:     return KindSpell;
+                case CardKind.Formation: return KindFormation;
+                default:                 return Color.white;
+            }
+        }
+
+        // ---- 덱 더미 ----
+        public static readonly Color PileLabel = new Color(0.96f, 0.92f, 0.80f); // 덱 더미 아래 글자
+        public static readonly Color PileHover = new Color(1.00f, 0.95f, 0.75f); // 마우스를 올렸을 때 카드 뒷면 색(살짝 밝게)
+
         /// <summary>진영에 맞는 색을 돌려준다.</summary>
         public static Color FactionColor(Faction faction)
         {

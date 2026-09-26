@@ -19,6 +19,9 @@ namespace CardBattle
         /// <summary>필드에서의 실시간 체력. data.health는 설계상 최대치이고, 이 값이 전투 중 실제로 깎인다.</summary>
         [System.NonSerialized] public int currentHealth;
 
+        /// <summary>필드에서의 실시간 공격력. 처음엔 data.attack이고, 장비·전술 효과로 오를 수 있다.</summary>
+        [System.NonSerialized] public int currentAttack;
+
         /// <summary>체력이 0 이하가 되어 죽었는지.</summary>
         public bool IsDead { get { return currentHealth <= 0; } }
 
@@ -57,6 +60,11 @@ namespace CardBattle
         const float AbilityDescHeight = 0.072f;  // 키워드 설명 (작아서 안 보이면 이 값을 올린다. 카드 위에 마우스를 올리면 크게도 보임)
         const float RarityTextHeight = 0.055f;   // 희귀도 리본 글자
         const float FlavorTextHeight = 0.045f;   // 맨 아래 설정 문구
+        const float KindLabelHeight = 0.075f;    // 초상화 위쪽 가운데의 카드 종류 표시 ("장비", "전술", "진")
+
+        // 카드 종류 표시 위치 (카드 중심 기준, 카드 크기 1.35 × 2.05). 코스트 원과 희귀도 리본 사이 윗부분.
+        static readonly Vector3 KindLabelLocalPos = new Vector3(0f, 0.9f, -0.01f);
+        const string KindLabelName = "KindLabel"; // 실행 중에 만들어지는 종류 표시 오브젝트 이름
 
         const int AbilityWrapChars = 10;          // 능력 설명 줄바꿈 기준 글자수(능력 상자 실제 폭에 맞춘 값)
 
@@ -81,6 +89,7 @@ namespace CardBattle
             if (d == null) return;
 
             currentHealth = d.health; // 전투용 체력은 최대치에서 시작
+            currentAttack = d.attack; // 전투용 공격력도 카드에 적힌 값에서 시작
 
             ApplyTextSizes();
             ApplyFrameColors(d);
@@ -89,6 +98,7 @@ namespace CardBattle
             ApplyStats(d);
             ApplyAbility(d);
             ApplyRarity(d);
+            ApplyKindLabel(d);
             UnityUtil.SetText(flavorTextMesh, d.flavorText ?? "");
         }
 
@@ -98,6 +108,21 @@ namespace CardBattle
             if (amount <= 0) return;
             currentHealth -= amount;
             UnityUtil.SetText(hpText, Mathf.Max(0, currentHealth).ToString()); // 화면에는 0 아래로 표시하지 않음
+        }
+
+        /// <summary>장비·전술 효과로 공격력/체력을 올린다(음수면 내린다). 숫자 배지도 바로 갱신한다.</summary>
+        public void ApplyBuff(int attackBonus, int healthBonus)
+        {
+            currentAttack = Mathf.Max(0, currentAttack + attackBonus);
+            currentHealth += healthBonus;
+            RefreshStatTexts();
+        }
+
+        /// <summary>공격력/체력 배지에 지금 값(currentAttack/currentHealth)을 적는다.</summary>
+        public void RefreshStatTexts()
+        {
+            UnityUtil.SetText(atkText, currentAttack.ToString());
+            UnityUtil.SetText(hpText, Mathf.Max(0, currentHealth).ToString());
         }
 
         /// <summary>
@@ -182,12 +207,70 @@ namespace CardBattle
             UnityUtil.SetText(nameTextKo, d.cardNameKo);
         }
 
-        /// <summary>코스트/공격력/체력 숫자를 넣는다.</summary>
+        /// <summary>
+        /// 코스트/공격력/체력 숫자를 넣는다. 카드 종류에 따라 배지 모양이 다르다.
+        ///   유닛: 공격력/체력 그대로   장비: "+2", "+1"처럼 더해 줄 값   전술: 배지 숨김   진: 공격력 0이면 공격력 배지 숨김
+        /// </summary>
         void ApplyStats(CardData d)
         {
             UnityUtil.SetText(costText, d.cost.ToString());
-            UnityUtil.SetText(atkText, d.attack.ToString());
-            UnityUtil.SetText(hpText, d.health.ToString());
+
+            bool showAttack = true, showHealth = true;
+            if (d.IsSpell) { showAttack = false; showHealth = false; }
+            else if (d.cardKind == CardKind.Formation && d.attack <= 0) showAttack = false;
+
+            SetBadgeVisible(atkBadgeRenderer, atkText, showAttack);
+            SetBadgeVisible(hpBadgeRenderer, hpText, showHealth);
+
+            if (d.IsEquipment)
+            {
+                UnityUtil.SetText(atkText, "+" + d.attack);
+                UnityUtil.SetText(hpText, "+" + d.health);
+            }
+            else
+            {
+                UnityUtil.SetText(atkText, d.attack.ToString());
+                UnityUtil.SetText(hpText, d.health.ToString());
+            }
+        }
+
+        /// <summary>배지(배경)와 숫자를 함께 보이거나 숨긴다.</summary>
+        static void SetBadgeVisible(SpriteRenderer badge, TextMesh text, bool visible)
+        {
+            if (badge != null) badge.gameObject.SetActive(visible);
+            if (text != null) text.gameObject.SetActive(visible);
+        }
+
+        /// <summary>
+        /// 초상화 위쪽 가운데에 카드 종류("장비", "전술", "진")를 적는다. 유닛은 표시하지 않는다.
+        /// 표시용 글자는 한글 이름 글자를 복제해서 처음 한 번 만들고 이후 재사용한다.
+        /// </summary>
+        void ApplyKindLabel(CardData d)
+        {
+            string label = GameTexts.KindLabel(d.cardKind);
+            var existing = transform.Find(KindLabelName);
+            TextMesh kindText = existing != null ? existing.GetComponent<TextMesh>() : null;
+
+            if (string.IsNullOrEmpty(label))
+            {
+                if (existing != null) existing.gameObject.SetActive(false);
+                return;
+            }
+            if (kindText == null)
+            {
+                if (nameTextKo == null) return; // 복제할 글자 스타일이 없음
+                var go = Object.Instantiate(nameTextKo.gameObject, transform);
+                go.name = KindLabelName;
+                go.transform.localPosition = KindLabelLocalPos;
+                go.transform.localRotation = Quaternion.identity;
+                kindText = go.GetComponent<TextMesh>();
+                kindText.anchor = TextAnchor.MiddleCenter;
+                kindText.alignment = TextAlignment.Center;
+            }
+            kindText.gameObject.SetActive(true);
+            SetTextSize(kindText, KindLabelHeight, true);
+            kindText.text = label;
+            kindText.color = GamePalette.KindColor(d.cardKind);
         }
 
         /// <summary>능력 상자에 키워드 이름/설명을 넣는다. 키워드가 없으면 상자를 숨긴다.</summary>
