@@ -14,11 +14,10 @@ namespace CardBattle
     ///  5) Wall 키워드 카드는 받는 피해가 CardKeywords.WallDamageReduction만큼 줄어든다. 단 Ranged 카드의 공격은 Wall을 무시한다.
     ///  6) 체력이 0 이하가 된 유닛은 필드에서 제거된다.
     ///
-    /// 연출을 넣을 수 있도록 세 단계로 나눠져 있다:
+    /// 연출을 넣을 수 있도록 세 단계로 나눠져 있다 (CardManager가 순서대로 부른다):
     ///   Plan()        : 누가 누구를 얼마나 때리는지 계산만 한다 (아직 아무도 다치지 않음)
     ///   ApplyDamage() : 계산한 피해를 유닛에 적용한다 (죽은 유닛은 아직 필드에 남아있음)
     ///   RemoveDead()  : 죽은 유닛을 필드에서 치운다
-    ///   Resolve()     : 위 세 단계를 한 번에 (연출 없이 바로 결과만 필요할 때)
     /// </summary>
     public static class LaneCombat
     {
@@ -37,24 +36,8 @@ namespace CardBattle
         {
             public int damageToPlayerHero; // 플레이어 히어로가 받은 피해
             public int damageToEnemyHero;  // 상대 히어로가 받은 피해
-            public int unitsKilled;        // 이번 전투에서 죽은 유닛 수(양쪽 합)
             public List<Hit> hits = new List<Hit>();           // 모든 공격 기록 (레인 순서)
             public List<CardView> deadUnits = new List<CardView>(); // ApplyDamage 후 죽은 유닛들
-
-            /// <summary>해당 편 히어로가 받은 피해.</summary>
-            public int HeroDamageTo(Side side)
-            {
-                return side == Side.Player ? damageToPlayerHero : damageToEnemyHero;
-            }
-        }
-
-        /// <summary>계산 → 피해 적용 → 죽은 유닛 제거를 한 번에 한다. (히어로 체력 반영은 CardManager가 한다)</summary>
-        public static Result Resolve(FieldZone playerField, FieldZone enemyField)
-        {
-            var result = Plan(playerField, enemyField);
-            ApplyDamage(result);
-            result.unitsKilled = RemoveDead(playerField, enemyField);
-            return result;
         }
 
         /// <summary>양쪽 필드의 모든 공격을 계산만 한다. 유닛 체력은 아직 바뀌지 않는다.</summary>
@@ -91,13 +74,11 @@ namespace CardBattle
             }
         }
 
-        /// <summary>양쪽 필드에서 체력이 0 이하인 유닛을 치우고, 치운 수를 돌려준다.</summary>
-        public static int RemoveDead(FieldZone playerField, FieldZone enemyField)
+        /// <summary>양쪽 필드에서 체력이 0 이하인 유닛을 치운다.</summary>
+        public static void RemoveDead(FieldZone playerField, FieldZone enemyField)
         {
-            int killed = 0;
-            if (playerField != null) killed += RemoveDeadUnits(playerField);
-            if (enemyField != null) killed += RemoveDeadUnits(enemyField);
-            return killed;
+            RemoveDeadUnits(playerField);
+            RemoveDeadUnits(enemyField);
         }
 
         /// <summary>
@@ -106,75 +87,55 @@ namespace CardBattle
         /// </summary>
         static void CollectLaneAttacks(FieldZone attacker, FieldZone defender, int lane, Side defenderSide, Result result)
         {
-            // 전열 카드만 공격한다 (후열은 CanAttack에서 걸러짐)
-            foreach (bool attackerInFront in new[] { true, false })
+            var unit = FrontCard(attacker, lane); // 공격은 전열 카드만 한다 (후열은 장비 칸)
+            if (!CanAttack(unit)) return;
+
+            var target = FrontCard(defender, lane); // 맞는 것도 전열 카드만. 없으면 null = 히어로가 맞는다
+            int damage = target != null ? DamageAfterDefense(unit, target, unit.currentAttack) : unit.currentAttack;
+            result.hits.Add(new Hit { lane = lane, attacker = unit, target = target, targetSide = defenderSide, damage = damage });
+
+            if (target == null) // 막는 유닛이 없으면 히어로가 맞는다
             {
-                var slot = attacker.SlotAt(attackerInFront, lane);
-                var unit = slot != null ? slot.OccupantView : null;
-                if (!CanAttack(unit, attackerInFront)) continue;
-
-                bool targetInFront;
-                var target = FindTarget(defender, lane, out targetInFront);
-                int damage = unit.currentAttack;
-                if (target != null) damage = DamageAfterDefense(unit, target, targetInFront, damage); // 방어 효과 적용
-
-                result.hits.Add(new Hit { lane = lane, attacker = unit, target = target, targetSide = defenderSide, damage = damage });
-
-                if (target == null) // 막는 유닛이 없으면 히어로가 맞는다
-                {
-                    if (defenderSide == Side.Player) result.damageToPlayerHero += damage;
-                    else result.damageToEnemyHero += damage;
-                }
+                if (defenderSide == Side.Player) result.damageToPlayerHero += damage;
+                else result.damageToEnemyHero += damage;
             }
         }
 
-        /// <summary>이 카드가 공격할 수 있는지: 전열에 있고, 살아있고, 유닛·진이며, 공격력이 있어야 한다. (후열은 장비 칸이라 공격하지 않음)</summary>
-        static bool CanAttack(CardView unit, bool inFront)
+        /// <summary>이 카드가 공격할 수 있는지: 살아있는 유닛·진이고 공격력이 있어야 한다.</summary>
+        static bool CanAttack(CardView unit)
         {
-            if (!inFront) return false;
-            if (unit == null || unit.data == null || unit.IsDead || !unit.data.IsFieldCard) return false;
-            return unit.currentAttack > 0;
+            return unit != null && unit.data != null && !unit.IsDead && unit.data.IsFieldCard && unit.currentAttack > 0;
         }
 
-        /// <summary>상대 레인에서 맞을 카드를 찾는다: 전열 카드만 맞는다(후열 장비는 맞지 않음). 없으면 null = 히어로가 맞는다.</summary>
-        static CardView FindTarget(FieldZone defender, int lane, out bool inFront)
+        /// <summary>해당 레인 전열에 있는 살아있는 카드. 없으면 null.</summary>
+        static CardView FrontCard(FieldZone field, int lane)
         {
-            var front = defender.SlotAt(true, lane);
-            var frontUnit = front != null ? front.OccupantView : null;
-            inFront = true;
-            if (frontUnit != null && !frontUnit.IsDead) return frontUnit;
-            return null;
+            var slot = field.SlotAt(true, lane);
+            var unit = slot != null ? slot.OccupantView : null;
+            return unit != null && !unit.IsDead ? unit : null;
         }
 
         /// <summary>
         /// 맞는 쪽의 방어 효과(현재는 Wall)를 반영한 최종 피해. 0 아래로는 내려가지 않는다.
         /// 공격하는 쪽이 Ranged(원거리)면 Wall 효과를 무시한다.
         /// </summary>
-        static int DamageAfterDefense(CardView attacker, CardView target, bool targetInFront, int damage)
+        static int DamageAfterDefense(CardView attacker, CardView target, int damage)
         {
-            bool ignoresWall = attacker != null && attacker.data != null && attacker.data.HasKeyword(CardKeywords.Ranged);
-            if (!ignoresWall && targetInFront && target.data != null && target.data.HasKeyword(CardKeywords.Wall))
+            bool ignoresWall = attacker.data.HasKeyword(CardKeywords.Ranged);
+            if (!ignoresWall && target.data != null && target.data.HasKeyword(CardKeywords.Wall))
                 damage -= CardKeywords.WallDamageReduction;
             return damage < 0 ? 0 : damage;
         }
 
-        /// <summary>체력이 0 이하인 유닛을 필드에서 제거하고, 제거한 수를 돌려준다.</summary>
-        static int RemoveDeadUnits(FieldZone field)
+        /// <summary>전열에서 체력이 0 이하인 카드를 제거한다. (후열 장비는 피해를 받지 않으므로 볼 필요 없음)</summary>
+        static void RemoveDeadUnits(FieldZone field)
         {
-            int killed = 0;
-            foreach (bool front in new[] { true, false })
+            if (field == null || field.frontRow == null) return;
+            foreach (var slot in field.frontRow)
             {
-                var row = front ? field.frontRow : field.backRow;
-                if (row == null) continue;
-                foreach (var slot in row)
-                {
-                    var unit = slot != null ? slot.OccupantView : null;
-                    if (unit == null || !unit.IsDead) continue;
-                    field.DestroyCardAt(slot);
-                    killed++;
-                }
+                var unit = slot != null ? slot.OccupantView : null;
+                if (unit != null && unit.IsDead) field.DestroyCardAt(slot);
             }
-            return killed;
         }
     }
 }

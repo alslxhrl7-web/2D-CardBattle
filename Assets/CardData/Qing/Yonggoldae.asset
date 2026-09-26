@@ -20,6 +20,9 @@ MonoBehaviour:
   cost: 6
   attack: 7
   health: 5
+  spellEffect: 0
+  effectValue: 0
   keywordText: "Chain Cavalry: \uACF5\uACA9 \uC131\uACF5(\uCC98\uCE58) \uC2DC \uCD94\uAC00 \uACF5\uACA9"
   flavorText: "\uC804\uC124 \uC720\uB2DB."
   portrait: {fileID: 21300000, guid: 5aca13451308d2641959c73fed0a23d4, type: 3}
+  model3D: {fileID: 0}

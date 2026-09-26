@@ -4,19 +4,18 @@
 
 ## 게임 시작하는 법
 
-가장 쉬운 방법: Unity 상단 메뉴 **CardBattle → 게임 시작**을 누르세요. 게임 씬(`Assets/Scenes/SampleScene.unity`)을 열고, 씬 구성이 덜 돼 있으면 자동으로 채운 뒤 Play를 눌러줍니다.
+가장 쉬운 방법: Unity 상단 메뉴 **CardBattle → 게임 시작**을 누르세요. 게임 씬(`Assets/Scenes/SampleScene.unity`)을 열고 Play를 눌러줍니다.
 
 직접 하려면:
 
 1. Unity Hub에서 이 프로젝트를 엽니다.
 2. 프로젝트 창에서 `Assets/Scenes/SampleScene`을 더블클릭해 엽니다. (다른 씬이 열려 있으면 게임이 안 보입니다)
-3. 처음 한 번만 메뉴 **CardBattle → 씬 자동 구성**을 누릅니다.
-4. 화면 위쪽 가운데의 ▶(Play) 버튼을 누릅니다. 멈추려면 한 번 더 누릅니다.
+3. 화면 위쪽 가운데의 ▶(Play) 버튼을 누릅니다. 멈추려면 한 번 더 누릅니다.
 
 Play를 누르면 **처음 화면**이 뜹니다.
 
 - **배틀 시작**: 배틀 화면으로 가서 새 판을 시작합니다(덱 섞기 → 손패 5장 → 상대 첫 수).
-- **덱 편집**: 덱 편집 화면으로 갑니다. "저장"을 누르면 처음 화면으로 돌아옵니다.
+- **덱 더미(오른쪽)**: 클릭하면 덱 편집 화면으로 갑니다. "저장"을 누르면 처음 화면으로 돌아옵니다.
 - **팩 열기**: 조선 기본팩을 열어 결과를 보여줍니다.
 
 배틀 화면에는 카드(손패·필드)와 **턴 종료** 버튼, 군력/덱/체력 표시만 나옵니다. 손패 카드를 필드 빈칸으로 끌어다 놓아 내고(첫 턴에는 1장만), 턴 종료를 누르면 전투 후 다음 턴이 됩니다. 승패가 나면 턴 종료를 한 번 더 눌러 처음 화면으로 돌아갑니다.
@@ -25,15 +24,10 @@ Play를 누르면 **처음 화면**이 뜹니다.
 
 ## 씬 자동 구성이 하는 일
 
-메뉴 **CardBattle → 씬 자동 구성**은 코드에는 있지만 씬에 아직 없는 것들을 만들어 연결하고 씬을 저장합니다. 이미 있는 것은 건드리지 않으므로 여러 번 눌러도 안전합니다.
+메뉴 **CardBattle → 씬 자동 구성**은 필드 슬롯을 점검·복구합니다 (FieldSlot 스크립트, 콜라이더, 왼쪽→오른쪽 순서). 여러 번 눌러도 안전합니다.
+체력 표시와 승패 배너는 씬에 없으면 게임이 시작될 때 `CardManager`가 만들어 씁니다.
 
-- 필드 슬롯 점검·복구 (FieldSlot 스크립트, 콜라이더, 왼쪽→오른쪽 순서)
-- 체력 표시(왼쪽 ±3.7) 2개, 승패 문구(화면 가운데, 평소엔 숨김)
-- 조선 기본팩 에셋 `Assets/PackData/JoseonBasicPack.asset`
-- "팩 열기" 버튼과 팩 결과 패널
-- 화면 나누기: `ScreenManager`, 처음 화면(`Lobby`: 제목·배틀 시작·덱 편집·팩 열기), 배틀 화면 오브젝트 목록
-
-위치가 마음에 안 들면 씬에서 오브젝트를 옮기면 됩니다. 코드는 위치에 의존하지 않습니다.
+위치가 마음에 안 들면 씬에서 오브젝트를 옮기면 됩니다.
 
 ## 무엇을 바꾸려면 어디를 보나
 
@@ -92,16 +86,16 @@ Play를 누르면 **처음 화면**이 뜹니다.
 
 **패배 조건.** 체력이 0이 되거나, 카드를 뽑아야 하는데 드로우 더미가 비어 있으면 진다(봉수 같은 드로우 전술도 포함). 양쪽이 같은 때에 걸리면 무승부. 판정은 `CardManager.CheckGameOver()`, 이유 문구는 `GameTexts.cs`의 `Reason...`.
 
-**새 카드 14장과 시작 덱.** `Editor/CardBattleContentSetup.cs` 위쪽 표에 새 카드와 시작 덱(각 21장)이 정리돼 있다. 메뉴 **CardBattle → 새 카드·덱·덱 더미 적용**을 누르면 표대로 카드 에셋·덱·덱 편집 타일·덱 더미를 만들어 넣는다(여러 번 눌러도 안전, 단 카드 수치는 표의 값으로 돌아감). 그림은 `Assets/Portraits/`에 있다(VARCO 3D로 생성).
+**새 카드 14장과 시작 덱.** `Editor/CardBattleContentSetup.cs` 위쪽 표에 새 카드와 시작 덱(각 21장)이 정리돼 있다. 메뉴 **CardBattle → 새 카드·덱·덱 더미 적용**을 누르면 표대로 카드 에셋·덱·덱 편집 타일·덱 더미를 넣는다(여러 번 눌러도 안전: 이미 있는 카드 에셋과 이미 채워진 덱은 건드리지 않음). 그림은 `Assets/Portraits/`에 있다(VARCO 3D로 생성).
 
-**덱 더미.** 배틀 화면 오른쪽 위/아래의 카드 뒷면 더미가 남은 덱이다(장수가 줄면 더미가 얇아짐). 처음 화면의 덱 더미를 클릭하면 덱 편집 화면으로 간다(예전 "덱 편집" 버튼은 꺼 두었다).
+**덱 더미.** 배틀 화면 오른쪽 위/아래의 카드 뒷면 더미가 남은 덱이다(장수가 줄면 더미가 얇아짐). 처음 화면의 덱 더미를 클릭하면 덱 편집 화면으로 간다.
 
 **itch.io에 올리기.** 메뉴 **CardBattle → itch.io용 WebGL 빌드**를 누르면(약 15~20분) 한글 글꼴 적용 → 웹 설정 → 빌드 → `Builds/CardBattle_itch.zip` 생성까지 한 번에 된다. 결과는 `Logs/CardBattleWebBuild.log`. 웹에서는 Unity 기본 글꼴에 한글이 없어서 `Assets/Fonts/NanumGothic`(SIL OFL, 무료 배포 가능)을 쓴다. 새 글자(TextMesh)를 씬에 추가했다면 **CardBattle → 한글 글꼴 적용**을 한 번 눌러 준다.
 
 ## 주의할 점
 
 - 인스펙터에 보이는 필드 이름(`playerHand`, `manaText` 등)을 코드에서 바꾸면 씬 연결이 끊깁니다. 이름을 바꿔야 한다면 `[UnityEngine.Serialization.FormerlySerializedAs("옛이름")]`을 붙이세요.
-- MonoBehaviour 클래스 이름과 파일 이름은 같아야 합니다(FieldSlot을 별도 파일로 뺀 이유).
+- MonoBehaviour 클래스 이름과 파일 이름은 같아야 합니다.
 - `Editor` 폴더 안의 스크립트는 에디터 전용이라 게임 빌드에 들어가지 않습니다.
 - 배경 그림은 `Resources` 폴더 안에 있어야 코드가 불러올 수 있습니다. 파일 이름·위치를 바꾸면 `SceneBackground.cs`의 `ResourcePath`도 같이 바꾸세요.
 
@@ -114,7 +108,7 @@ Play를 누르면 **처음 화면**이 뜹니다.
 - **덱 더미**: `DeckPile.cs` (카드 뒷면이 쌓인 더미, 배틀/처음 화면)
 - **화면 표시 도우미**: `CardHoverPreview.cs` (마우스 올리면 카드 확대), `HudFactory.cs` (실행 중 글자/배경판 생성), `SceneBackground.cs` (배경 그림 깔기)
 - **설정 모음**: `GameRules.cs`, `GameTexts.cs`, `GamePalette.cs`, `CardKeywords.cs`, `UnityUtil.cs`
-- **에디터 도구**: `Editor/CardBattleSetupMenu.cs` (게임 시작 / 씬 자동 구성 / 카드팩 확률 확인 메뉴), `Editor/CardBattleContentSetup.cs` (새 카드·덱·덱 편집 타일·덱 더미 적용 메뉴), `Editor/CardBattleWebBuild.cs` (itch.io용 WebGL 빌드·한글 글꼴 적용 메뉴), `Editor/CardBattleAutoApply.cs` (스크립트가 바뀌어 컴파일되면 씬 자동 구성을 한 번 알아서 실행하고 결과를 `Logs/CardBattleAutoApply.log`에 기록. 다시 돌리려면 메뉴 CardBattle → 자동 적용 다시 실행)
+- **에디터 도구**: `Editor/CardBattleSetupMenu.cs` (게임 시작 / 씬 자동 구성 / 카드팩 확률 확인 메뉴), `Editor/CardBattleContentSetup.cs` (새 카드·덱·덱 편집 타일·덱 더미 적용 메뉴), `Editor/CardBattleWebBuild.cs` (itch.io용 WebGL 빌드·한글 글꼴 적용 메뉴), `Editor/CardBattleAutoApply.cs` (ApplyVersion 값이 바뀐 뒤 컴파일되면 씬 자동 구성과 "새 카드·덱·덱 더미 적용"을 한 번 알아서 실행하고 결과를 `Logs/CardBattleAutoApply.log`에 기록. 다시 돌리려면 메뉴 CardBattle → 자동 적용 다시 실행)
 
 ## 아직 없는 것
 

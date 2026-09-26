@@ -20,6 +20,9 @@ MonoBehaviour:
   cost: 0
   attack: 0
   health: 30
+  spellEffect: 0
+  effectValue: 0
   keywordText: "\uD788\uC5B4\uB85C\uD30C\uC6CC Fortify (1): \uC544\uAD70 +0/+2 + Wall"
   flavorText: "\uC870\uC120\uC758 \uC655, \uC131\uBCBD \uC704\uC5D0\uC11C \uB098\uB77C\uB97C \uC9C0\uD0A8\uB2E4."
   portrait: {fileID: 21300000, guid: 0b54e6ef39300d740b899bfa7c332380, type: 3}
+  model3D: {fileID: 0}

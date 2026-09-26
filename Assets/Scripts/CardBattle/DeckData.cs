@@ -11,7 +11,7 @@ namespace CardBattle
     ///
     /// 새 덱을 만들려면: 프로젝트 창에서 우클릭 → Create → CardBattle → Deck Data.
     /// 그 다음 인스펙터에서 entries 리스트에 카드(CardData)와 매수(count)를 채워 넣으면 된다.
-    /// 게임 화면의 "덱 편집" 버튼으로도 플레이어 덱을 바꿀 수 있다.
+    /// 처음 화면의 덱 더미를 클릭하면 나오는 덱 편집 화면으로도 플레이어 덱을 바꿀 수 있다.
     /// </summary>
     [CreateAssetMenu(fileName = "NewDeck", menuName = "CardBattle/Deck Data")]
     public class DeckData : ScriptableObject

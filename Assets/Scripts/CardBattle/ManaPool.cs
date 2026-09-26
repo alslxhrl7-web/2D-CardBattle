@@ -24,25 +24,13 @@ namespace CardBattle
             current = max;
         }
 
-        /// <summary>이 비용을 낼 수 있는지만 확인한다(실제로 소모하지는 않음).</summary>
-        public bool CanAfford(int cost)
-        {
-            return ClampCost(cost) <= current;
-        }
-
-        /// <summary>군력이 충분하면 소모하고 true, 부족하면 아무 것도 하지 않고 false.</summary>
+        /// <summary>군력이 충분하면 소모하고 true, 부족하면 아무 것도 하지 않고 false. (음수 비용은 0으로 본다)</summary>
         public bool TrySpend(int cost)
         {
-            cost = ClampCost(cost);
+            if (cost < 0) cost = 0;
             if (cost > current) return false; // 부족하면 실패
             current -= cost;
             return true;
-        }
-
-        /// <summary>음수 비용이 들어오면 0으로 본다(군력이 늘어나는 실수를 막기 위함).</summary>
-        static int ClampCost(int cost)
-        {
-            return cost < 0 ? 0 : cost;
         }
     }
 }

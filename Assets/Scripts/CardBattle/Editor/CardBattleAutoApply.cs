@@ -19,7 +19,7 @@ namespace CardBattle.EditorTools
     [InitializeOnLoad]
     public static class CardBattleAutoApply
     {
-        const string ApplyVersion = "v8-rules-1";                                    // 적용 버전 (바뀌면 다시 한 번 실행됨)
+        const string ApplyVersion = "v11-no3d-1";                                    // 적용 버전 (바뀌면 다시 한 번 실행됨)
         const string PrefKey = "CardBattle.AutoApplyVersion";                        // 마지막으로 적용한 버전을 저장하는 키
         const string ScenePath = "Assets/Scenes/SampleScene.unity";                  // 게임 씬
         const string BackgroundPath = "Assets/Resources/Backgrounds/BattleBackground.png"; // 배경 그림
@@ -137,15 +137,15 @@ namespace CardBattle.EditorTools
                 report.Add("씬: " + ScenePath + " 열기");
             }
 
-            if (UnityEngine.Object.FindFirstObjectByType<CardManager>(FindObjectsInactive.Include) == null)
+            if (UnityEngine.Object.FindAnyObjectByType<CardManager>(FindObjectsInactive.Include) == null)
             {
                 report.Add("씬: CardManager가 없음");
                 return false;
             }
 
-            CardBattleSetupMenu.SetupScene(); // 슬롯 복구, 체력/승패 문구, 조선팩, 팩 UI, 화면 나누기 + 씬 저장
+            CardBattleSetupMenu.SetupScene(); // 필드 슬롯 점검 + 씬 저장
 
-            // 새 카드(장비·전술·진) 14장, 시작 덱, 덱 편집 타일, 덱 더미
+            // 카드·덱·덱 편집 타일·덱 더미·배틀 버튼
             var contentLog = new List<string>();
             CardBattleContentSetup.Apply(contentLog);
             EditorSceneManager.SaveOpenScenes();
@@ -158,7 +158,7 @@ namespace CardBattle.EditorTools
         /// <summary>적용 결과 확인용으로 주요 오브젝트가 씬에 있는지 기록한다.</summary>
         static void DescribeScene(List<string> report)
         {
-            var manager = UnityEngine.Object.FindFirstObjectByType<CardManager>(FindObjectsInactive.Include);
+            var manager = UnityEngine.Object.FindAnyObjectByType<CardManager>(FindObjectsInactive.Include);
             report.Add("  CardManager: " + (manager != null ? manager.name : "없음"));
             if (manager != null)
             {
@@ -166,9 +166,9 @@ namespace CardBattle.EditorTools
                 report.Add("  적 체력 표시: " + (manager.enemyHealthText != null ? manager.enemyHealthText.name : "없음"));
                 report.Add("  승패 문구: " + (manager.gameOverText != null ? manager.gameOverText.name : "없음"));
             }
-            var screens = UnityEngine.Object.FindFirstObjectByType<ScreenManager>(FindObjectsInactive.Include);
+            var screens = UnityEngine.Object.FindAnyObjectByType<ScreenManager>(FindObjectsInactive.Include);
             report.Add("  ScreenManager: " + (screens != null ? screens.name : "없음"));
-            var pack = UnityEngine.Object.FindFirstObjectByType<PackOpenerUI>(FindObjectsInactive.Include);
+            var pack = UnityEngine.Object.FindAnyObjectByType<PackOpenerUI>(FindObjectsInactive.Include);
             report.Add("  PackOpenerUI: " + (pack != null ? pack.name : "없음"));
             report.Add("  카메라: " + (Camera.main != null ? Camera.main.name : "MainCamera 태그 카메라 없음"));
         }

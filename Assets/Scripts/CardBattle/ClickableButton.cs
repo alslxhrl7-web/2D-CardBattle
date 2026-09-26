@@ -8,12 +8,12 @@ namespace CardBattle
     ///
     /// 새 버튼을 만들 때는 이 클래스를 상속해서 OnClick()만 쓰면 된다. 예시:
     ///
-    ///     public class MyButton : ClickableButton                        // ← 이 클래스를 상속
-    ///     {                                                               // ← 클래스 시작
-    ///         public CardManager manager;                                 // ← 버튼이 호출할 대상 (인스펙터에서 연결)
-    ///         protected override ButtonColors Colors { get { return GamePalette.GreenButton; } }  // ← 색(선택)
-    ///         protected override void OnClick() { manager.EndTurn(); }    // ← 눌렀을 때 할 일
-    ///     }                                                               // ← 클래스 끝
+    ///     public class MyButton : ClickableButton
+    ///     {
+    ///         public CardManager manager;                                                         // 인스펙터에서 연결
+    ///         protected override ButtonColors Colors { get { return GamePalette.GreenButton; } }  // 색 (생략 가능)
+    ///         protected override void OnClick() { manager.EndTurn(); }                            // 눌렀을 때 할 일
+    ///     }
     /// </summary>
     [RequireComponent(typeof(BoxCollider2D))]
     public abstract class ClickableButton : MonoBehaviour

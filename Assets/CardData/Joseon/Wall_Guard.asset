@@ -25,3 +25,4 @@ MonoBehaviour:
   keywordText: "Wall: \uBC1B\uB294 \uD53C\uD574 -1"
   flavorText: "\uC77C\uBC18 \uC720\uB2DB."
   portrait: {fileID: 21300000, guid: a77346a66c21e1e48842bc3fb5b1342c, type: 3}
+  model3D: {fileID: 0}

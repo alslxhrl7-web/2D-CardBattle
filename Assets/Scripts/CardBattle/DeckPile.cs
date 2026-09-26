@@ -18,8 +18,7 @@ namespace CardBattle
         public PileMode mode = PileMode.Battle; // 이 더미의 용도
         public Side side = Side.Player;         // Battle 모드: 누구의 드로우 더미인지
         public CardManager manager;             // 장수를 읽어올 게임 매니저
-        public ScreenManager screens;           // Lobby 모드: 클릭하면 덱 편집 화면으로 (없으면 builder 패널을 연다)
-        public DeckBuilderUI builder;           // Lobby 모드 예비: 화면 전환이 없을 때 열 덱 빌더
+        public ScreenManager screens;           // Lobby 모드: 클릭하면 덱 편집 화면으로
 
         public const string BackResourcePath = "CardBacks/CardBack"; // Resources 폴더 기준 카드 뒷면 그림 경로
         static readonly Vector2 CardSize = new Vector2(1.35f, 2.05f);  // 카드 한 장 크기(월드 유닛, CardView와 같음)
@@ -125,7 +124,7 @@ namespace CardBattle
             label.anchor = TextAnchor.UpperCenter;
             label.alignment = TextAlignment.Center;
             label.color = GamePalette.PileLabel;
-            HudFactory.SetHeight(label, LabelHeight, true);
+            UnityUtil.SetTextHeight(label, LabelHeight, true);
             var mr = label.GetComponent<MeshRenderer>();
             if (mr != null) mr.sortingOrder = SortingOrderBase + MaxLayers + 1;
         }
@@ -152,7 +151,6 @@ namespace CardBattle
             if (mode != PileMode.Lobby) return;
             hovering = false;
             if (screens != null) screens.ShowDeckEdit();
-            else if (builder != null) builder.OpenPanel();
         }
     }
 }

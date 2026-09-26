@@ -13,29 +13,13 @@ namespace CardBattle
     public static class EnemyAI
     {
         /// <summary>
-        /// 손패에서 이번에 낼 카드의 번호(인덱스)를 고른다. 낼 수 있는 카드가 없으면 -1.
-        /// 비용이 같은 카드가 여러 장이면 손패 앞쪽 카드를 고른다.
-        /// </summary>
-        public static int ChooseCardToPlay(IList<CardData> hand, int availableMana)
-        {
-            int best = -1; // 지금까지 찾은 가장 좋은 카드 번호 (-1 = 아직 없음)
-            for (int i = 0; i < hand.Count; i++)
-            {
-                var card = hand[i];
-                if (card == null || card.cost > availableMana) continue;   // 못 내는 카드는 건너뜀
-                if (best < 0 || card.cost > hand[best].cost) best = i;       // 더 비싼 카드면 교체
-            }
-            return best;
-        }
-
-        /// <summary>
-        /// 카드 종류까지 고려해서 이번에 낼 카드를 고른다. 낼 수 없는 카드는 건너뛴다.
+        /// 이번에 낼 카드의 손패 번호(인덱스)를 고른다. 낼 수 없는 카드는 건너뛴다.
         ///   유닛·진: 전열 빈 칸이 있어야 함   장비: 앞에 카드가 있는 후열 빈 칸이 있어야 함   전술: 언제나 가능
         /// 그중 가장 비싼 카드를 고른다(같으면 손패 앞쪽). 없으면 -1.
         /// </summary>
         public static int ChooseCardToPlay(IList<CardData> hand, int availableMana, bool hasEmptyFront, bool hasEquipSlot)
         {
-            int best = -1;
+            int best = -1; // 지금까지 찾은 가장 좋은 카드 번호 (-1 = 아직 없음)
             for (int i = 0; i < hand.Count; i++)
             {
                 var card = hand[i];
@@ -67,7 +51,7 @@ namespace CardBattle
         }
 
         /// <summary>유닛·진을 놓을 칸을 고른다: 전열의 가장 왼쪽 빈 칸. 없으면 null. (후열은 장비 전용)</summary>
-        public static FieldSlot ChooseSlot(FieldZone field, CardData card)
+        public static FieldSlot ChooseSlot(FieldZone field)
         {
             return field.GetFirstEmpty(true);
         }

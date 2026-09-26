@@ -4,7 +4,7 @@ namespace CardBattle
 {
     /// <summary>
     /// 게임 실행 중에 화면 글자/배경판을 만들어주는 도우미.
-    /// 메뉴 "씬 자동 구성"을 누르지 않았더라도 체력 표시·승패 배너가 빠지지 않도록 CardManager가 사용한다.
+    /// 체력 표시·승패 배너(CardManager), 덱 더미(DeckPile)가 사용한다.
     /// </summary>
     public static class HudFactory
     {
@@ -33,15 +33,6 @@ namespace CardBattle
             var text = go.GetComponent<TextMesh>();
             text.text = "";
             return text;
-        }
-
-        /// <summary>글자 높이(월드 유닛)를 정한다. 글꼴 해상도를 크게 두고 characterSize로 줄여서 선명하게.</summary>
-        public static void SetHeight(TextMesh text, float height, bool bold)
-        {
-            if (text == null) return;
-            text.fontSize = 64;
-            text.characterSize = height * 10f / 64f; // TextMesh 글자 높이 ≈ fontSize × characterSize ÷ 10
-            text.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
         }
 
         /// <summary>

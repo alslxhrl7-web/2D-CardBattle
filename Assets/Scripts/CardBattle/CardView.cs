@@ -30,7 +30,6 @@ namespace CardBattle
         public SpriteRenderer portraitRenderer;     // 초상화 그림
         public SpriteRenderer namePlateRenderer;    // 이름이 적히는 띠
         public SpriteRenderer abilityBgRenderer;    // 능력 설명 상자 배경
-        public SpriteRenderer costBadgeRenderer;    // 좌상단 코스트 원
         public SpriteRenderer rarityRibbonRenderer; // 우상단 희귀도 리본
         public SpriteRenderer atkBadgeRenderer;     // 공격력 배지
         public SpriteRenderer hpBadgeRenderer;      // 체력 배지
@@ -50,7 +49,6 @@ namespace CardBattle
 
         // ---- 글자 크기 (카드 위에서의 글자 높이, 월드 유닛) — 글자가 크거나 작으면 여기 숫자만 바꾸면 된다 ----
         // 카드 크기는 가로 1.35 × 세로 2.05 이다.
-        const int TextFontSize = 64;             // 글꼴 해상도. 클수록 글자가 선명하다(실제 크기는 아래 높이 값으로 정해짐)
         const float CostTextHeight = 0.26f;      // 좌상단 코스트 숫자
         const float StatTextHeight = 0.15f;      // 공격력/체력 숫자
         const float NameKoHeight = 0.105f;       // 한글 이름
@@ -144,26 +142,14 @@ namespace CardBattle
         /// <summary>모든 글자의 크기/굵기를 위의 "글자 크기" 상수대로 맞춘다(영문 이름은 ApplyName에서 따로 맞춤).</summary>
         void ApplyTextSizes()
         {
-            SetTextSize(costText, CostTextHeight, true);
-            SetTextSize(atkText, StatTextHeight, true);
-            SetTextSize(hpText, StatTextHeight, true);
-            SetTextSize(nameTextKo, NameKoHeight, true);
-            SetTextSize(abilityNameText, AbilityNameHeight, true);
-            SetTextSize(abilityDescText, AbilityDescHeight, false);
-            SetTextSize(rarityText, RarityTextHeight, true);
-            SetTextSize(flavorTextMesh, FlavorTextHeight, false);
-        }
-
-        /// <summary>
-        /// 글자를 원하는 높이(월드 유닛)로 맞춘다. 글꼴 해상도(fontSize)를 크게 두고 characterSize로 크기를 줄이면
-        /// 같은 크기라도 글자가 흐릿하지 않고 선명하게 나온다. (TextMesh 글자 높이 ≈ fontSize × characterSize ÷ 10)
-        /// </summary>
-        static void SetTextSize(TextMesh text, float height, bool bold)
-        {
-            if (text == null) return;
-            text.fontSize = TextFontSize;
-            text.characterSize = height * 10f / TextFontSize;
-            text.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+            UnityUtil.SetTextHeight(costText, CostTextHeight, true);
+            UnityUtil.SetTextHeight(atkText, StatTextHeight, true);
+            UnityUtil.SetTextHeight(hpText, StatTextHeight, true);
+            UnityUtil.SetTextHeight(nameTextKo, NameKoHeight, true);
+            UnityUtil.SetTextHeight(abilityNameText, AbilityNameHeight, true);
+            UnityUtil.SetTextHeight(abilityDescText, AbilityDescHeight, false);
+            UnityUtil.SetTextHeight(rarityText, RarityTextHeight, true);
+            UnityUtil.SetTextHeight(flavorTextMesh, FlavorTextHeight, false);
         }
 
         /// <summary>테두리/네임플레이트/능력 상자/배지 색을 칠한다.</summary>
@@ -202,7 +188,7 @@ namespace CardBattle
                 nameText.text = d.cardNameEn;
                 int len = string.IsNullOrEmpty(d.cardNameEn) ? 1 : d.cardNameEn.Length;
                 float height = NameTargetWidth / (NameCharWidthRatio * len); // 이름이 길수록 작아진다
-                SetTextSize(nameText, Mathf.Clamp(height, NameEnHeightMin, NameEnHeightMax), false);
+                UnityUtil.SetTextHeight(nameText, Mathf.Clamp(height, NameEnHeightMin, NameEnHeightMax), false);
             }
             UnityUtil.SetText(nameTextKo, d.cardNameKo);
         }
@@ -268,7 +254,7 @@ namespace CardBattle
                 kindText.alignment = TextAlignment.Center;
             }
             kindText.gameObject.SetActive(true);
-            SetTextSize(kindText, KindLabelHeight, true);
+            UnityUtil.SetTextHeight(kindText, KindLabelHeight, true);
             kindText.text = label;
             kindText.color = GamePalette.KindColor(d.cardKind);
         }

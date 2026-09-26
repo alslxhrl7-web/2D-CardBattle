@@ -34,5 +34,19 @@ namespace CardBattle
         {
             if (target != null) target.text = text;
         }
+
+        const int TextFontSize = 64; // 글꼴 해상도. 크게 두고 characterSize로 줄여야 글자가 선명하다
+
+        /// <summary>
+        /// 글자 높이(월드 유닛)와 굵기를 정한다. TextMesh 글자 높이 ≈ fontSize × characterSize ÷ 10.
+        /// 카드 글자·체력 표시·승패 배너·덱 더미 글자가 모두 이 함수를 쓴다.
+        /// </summary>
+        public static void SetTextHeight(TextMesh text, float height, bool bold)
+        {
+            if (text == null) return;
+            text.fontSize = TextFontSize;
+            text.characterSize = height * 10f / TextFontSize;
+            text.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+        }
     }
 }

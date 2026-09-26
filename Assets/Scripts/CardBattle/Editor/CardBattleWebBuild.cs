@@ -27,7 +27,7 @@ namespace CardBattle.EditorTools
         const string BuildFolder = "Builds/WebGL";                     // 빌드 결과 폴더 (프로젝트 폴더 기준)
         const string ZipPath = "Builds/CardBattle_itch.zip";            // itch.io에 올릴 zip
         const string LogPath = "Logs/CardBattleWebBuild.log";           // 결과 기록
-        const string ProductName = "조선 vs 청 카드 배틀";               // 브라우저 탭 제목 등에 쓰이는 게임 이름
+        const string ProductName = "산성의 패: 병자호란";                // 브라우저 탭 제목 등에 쓰이는 게임 이름
         const int WebWidth = 1280;   // 웹 화면 가로 (itch.io Embed 크기와 맞추면 됨)
         const int WebHeight = 720;   // 웹 화면 세로
 

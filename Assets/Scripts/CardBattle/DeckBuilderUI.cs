@@ -6,10 +6,9 @@ namespace CardBattle
     /// <summary>
     /// 게임 안의 덱 빌더 패널. 로스터 카드(타일)를 클릭해 매수를 정하고 "저장"하면 DeckData 에셋에 반영된다.
     ///
-    ///   TogglePanel() : 패널 열기/닫기. 열 때마다 targetDeck에 저장된 내용으로 타일을 다시 맞춘다
-    ///                   (저장 안 하고 닫은 편집 내용은 버려짐).
-    ///   SaveDeck()    : 총 장수가 GameRules.MinDeckSize 이상이면 저장한다.
-    ///                   장수와 상관없이 패널은 항상 닫히고, 덱 편집 화면이었으면 처음 화면으로 돌아간다.
+    ///   OpenPanel() : 덱 편집 화면에 들어갈 때 ScreenManager가 부른다. targetDeck에 저장된 내용으로 타일을 다시 맞춘다
+    ///                 (저장 안 하고 나간 편집 내용은 버려짐).
+    ///   SaveDeck()  : 총 장수가 GameRules.MinDeckSize 이상이면 저장한다. 장수와 상관없이 처음 화면으로 돌아간다.
     ///
     /// 최소 장수/카드별 최대 매수 규칙은 GameRules.cs, 안내 문구는 GameTexts.cs에서 바꾼다.
     /// </summary>
@@ -19,21 +18,12 @@ namespace CardBattle
         public DeckData targetDeck;                  // 편집 대상 덱 (현재는 플레이어 덱)
         public List<DeckBuilderTile> tiles = new List<DeckBuilderTile>(); // 패널에 깔린 카드 타일들
         public TextMesh statusText;                  // "덱 카드 수: N장" 안내
-        public CardManager manager;                  // 저장 후 게임을 다시 시작할 매니저
-        public ScreenManager screens;                // 연결돼 있으면 저장 후 처음 화면으로 돌아간다 (선택)
+        public ScreenManager screens;                // 저장 후 처음 화면으로 돌아가기 위한 화면 전환 담당
 
         /// <summary>게임 시작 시 패널은 닫힌 상태로 둔다.</summary>
         void Awake()
         {
             if (panelRoot != null) panelRoot.SetActive(false);
-        }
-
-        /// <summary>패널을 열거나 닫는다. 열 때는 저장된 덱 내용을 다시 불러온다.</summary>
-        public void TogglePanel()
-        {
-            if (panelRoot == null) return;
-            if (panelRoot.activeSelf) ClosePanel();
-            else OpenPanel();
         }
 
         /// <summary>패널을 연다(저장된 덱 내용을 다시 불러옴). 덱 편집 화면으로 들어갈 때 ScreenManager가 부른다.</summary>
@@ -56,17 +46,11 @@ namespace CardBattle
             RefreshStatus();
         }
 
-        /// <summary>장수가 충분하면 덱을 저장하고 게임을 다시 시작한다. 패널은 항상 닫는다.</summary>
+        /// <summary>장수가 충분하면 덱을 저장한다. 저장 여부와 상관없이 처음 화면으로 돌아간다(패널도 같이 닫힘).</summary>
         public void SaveDeck()
         {
-            if (targetDeck != null && CurrentTotal() >= GameRules.MinDeckSize)
-            {
-                WriteTilesToDeck();
-                if (manager != null && screens == null) manager.ResetGame(); // 화면 분리가 없을 때만 바로 새 판 (있으면 배틀 시작 때 새 판)
-            }
-
-            // 저장 성공 여부와 무관하게 항상 닫는다(예전엔 장수 미달이면 안 닫혀서 버튼이 고장난 것처럼 보였음)
-            if (screens != null) screens.ShowLobby(); // 덱 편집 화면이면 처음 화면으로 돌아간다(패널도 같이 닫힘)
+            if (targetDeck != null && CurrentTotal() >= GameRules.MinDeckSize) WriteTilesToDeck();
+            if (screens != null) screens.ShowLobby();
             else ClosePanel();
         }
 

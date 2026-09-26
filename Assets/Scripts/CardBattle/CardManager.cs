@@ -17,7 +17,6 @@ namespace CardBattle
     ///   상대 판단 → EnemyAI.cs  / 전투 규칙 → LaneCombat.cs
     ///
     /// 플레이어/상대가 똑같이 하는 일은 Side(Player/Enemy)를 받는 함수 하나로 처리한다.
-    /// 인스펙터에 연결된 필드 이름은 씬 연결이 끊기지 않도록 예전 이름 그대로 두었다.
     /// </summary>
     public class CardManager : MonoBehaviour
     {
@@ -49,8 +48,8 @@ namespace CardBattle
         public TextMesh gameOverText;        // 승패가 갈렸을 때만 켜지는 문구
 
         // ---- 실행 중 자동으로 만드는 화면 표시의 위치/크기 (씬에 이미 있으면 그걸 씀) ----
-        static readonly Vector3 PlayerHealthPos = new Vector3(-7.2f, -3.7f, 0f); // 플레이어 체력 표시 위치
-        static readonly Vector3 EnemyHealthPos = new Vector3(-7.2f, 3.7f, 0f);   // 상대 체력 표시 위치
+        public static readonly Vector3 PlayerHealthPos = new Vector3(-7.2f, -3.7f, 0f); // 플레이어 체력 표시 위치
+        public static readonly Vector3 EnemyHealthPos = new Vector3(-7.2f, 3.7f, 0f);   // 상대 체력 표시 위치
         static readonly Vector3 ResultBannerPos = new Vector3(0f, 0.3f, 0f);     // 승패 배너 위치(화면 가운데)
         static readonly Vector2 ResultBackdropSize = new Vector2(30f, 3.2f);     // 승패 배너 뒤 어두운 띠 크기
         const float ResultTextHeight = 1.2f;   // "승리!" / "패배..." 글자 높이
@@ -106,7 +105,7 @@ namespace CardBattle
             if (gameOverText == null) gameOverText = HudFactory.CreateLabel(manaText, "GameOverText", ResultBannerPos);
 
             // 승패 배너 꾸미기: 큰 글자 + 뒤쪽 어두운 띠 + 아래 안내 문구
-            HudFactory.SetHeight(gameOverText, ResultTextHeight, true);
+            UnityUtil.SetTextHeight(gameOverText, ResultTextHeight, true);
             gameOverText.anchor = TextAnchor.MiddleCenter;
             gameOverText.alignment = TextAlignment.Center;
             var mr = gameOverText.GetComponent<MeshRenderer>();
@@ -117,7 +116,7 @@ namespace CardBattle
             {
                 var hint = HudFactory.CreateLabel(manaText, "Hint", gameOverText.transform.position + new Vector3(0f, -1.0f, 0f));
                 hint.transform.SetParent(gameOverText.transform, true);
-                HudFactory.SetHeight(hint, ResultHintHeight, false);
+                UnityUtil.SetTextHeight(hint, ResultHintHeight, false);
                 hint.anchor = TextAnchor.MiddleCenter;
                 hint.alignment = TextAlignment.Center;
                 hint.color = GamePalette.ResultHint;
@@ -247,28 +246,17 @@ namespace CardBattle
         /// </summary>
         public bool TryPlaceCard(CardView view, HandZone fromHand, FieldSlot slot)
         {
-            if (gameOver || busy) return false; // 게임이 끝났거나 연출 중이면 못 냄
-            if (view == null || view.data == null || fromHand == null || slot == null || !slot.IsEmpty) return false;
-            if (!view.data.IsFieldCard) return false; // 장비·전술 카드는 빈 칸에 놓을 수 없다 (TryEquip / TryCastSpell 사용)
+            if (!CanUseFromHand(view, fromHand) || !view.data.IsFieldCard) return false; // 장비·전술은 TryEquip / TryCastSpell
+            Side side = SideOf(fromHand);
+            var field = FieldOf(side);
+            if (slot == null || !slot.IsEmpty || !field.IsFrontSlot(slot)) return false; // 유닛·진은 내 전열 빈 칸에만
+            if (!ManaOf(side).TrySpend(view.data.cost)) return false;                    // 군력이 부족하면 실패
 
-            Side side = SideOf(fromHand);                              // 어느 편의 카드인지
-            if (!FieldOf(side).IsFrontSlot(slot)) return false;        // 유닛·진은 내 전열 칸에만
-            if (!CanPlayMoreThisTurn(side)) return false;              // 첫 턴 장수 제한에 걸리면 실패
-            if (!ManaOf(side).TrySpend(view.data.cost)) return false;  // 군력이 부족하면 실패
+            TakeFromHand(view, fromHand, side);
+            field.PlaceCard(view.transform, slot);
 
-            fromHand.RemoveCard(view.transform);            // 손패에서 빼고
-            FieldOf(side).PlaceCard(view.transform, slot);  // 필드 슬롯에 놓는다
-
-            var drag = view.GetComponent<CardDragHandler>();
-            if (drag != null) drag.ClearHand(); // 이제 손패 카드가 아니므로 드래그 연결을 끊는다
-
-            if (side == Side.Player) playerCardsPlayedThisTurn++; // 이번 턴에 낸 장수 +1
-            else enemyCardsPlayedThisTurn++;
-
-            var equipment = EquipmentBehind(FieldOf(side), slot); // 같은 레인 후열 장비가 있으면 강화
+            var equipment = EquipmentBehind(field, slot); // 같은 레인 후열 장비가 있으면 강화
             if (equipment != null) view.ApplyBuff(equipment.data.attack, equipment.data.health);
-
-            RefreshManaDisplay();
             return true;
         }
 
@@ -285,19 +273,13 @@ namespace CardBattle
             if (slot == null || !slot.IsEmpty || !field.IsBackSlot(slot)) return false; // 내 후열 빈 칸에만
             if (!ManaOf(side).TrySpend(view.data.cost)) return false;
 
-            fromHand.RemoveCard(view.transform);
+            TakeFromHand(view, fromHand, side);
             field.PlaceCard(view.transform, slot); // 장비 카드는 후열 칸에 그대로 남는다
-            var drag = view.GetComponent<CardDragHandler>();
-            if (drag != null) drag.ClearHand();
 
             bool front;
-            int lane = field.LaneOf(slot, out front);
-            var unit = field.SlotAt(true, lane) != null ? field.SlotAt(true, lane).OccupantView : null;
+            var frontSlot = field.SlotAt(true, field.LaneOf(slot, out front));
+            var unit = frontSlot != null ? frontSlot.OccupantView : null;
             if (unit != null) unit.ApplyBuff(view.data.attack, view.data.health); // 앞의 카드를 바로 강화
-
-            if (side == Side.Player) playerCardsPlayedThisTurn++;
-            else enemyCardsPlayedThisTurn++;
-            RefreshManaDisplay();
             return true;
         }
 
@@ -324,8 +306,9 @@ namespace CardBattle
             if (!ManaOf(side).TrySpend(view.data.cost)) return false;
 
             var data = view.data;
-            ConsumeFromHand(view, fromHand, side); // 먼저 손패에서 없애고 (드로우 효과가 손패 자리를 쓸 수 있게)
-            ApplySpell(side, data);                // 효과를 낸다
+            TakeFromHand(view, fromHand, side);     // 먼저 손패에서 없애고 (드로우 효과가 손패 자리를 쓸 수 있게)
+            UnityUtil.DestroySafe(view.gameObject); // 전술 카드는 쓰면 사라진다
+            ApplySpell(side, data);
             return true;
         }
 
@@ -368,26 +351,16 @@ namespace CardBattle
             return CanPlayMoreThisTurn(SideOf(fromHand));
         }
 
-        /// <summary>장비·전술 카드를 다 쓴 뒤: 손패에서 빼고 오브젝트를 없애고, 이번 턴 낸 장수를 센다.</summary>
-        void ConsumeFromHand(CardView view, HandZone fromHand, Side side)
+        /// <summary>카드를 낸 뒤 공통 처리: 손패에서 빼고, 드래그 연결을 끊고, 이번 턴 낸 장수를 세고, 군력 표시를 갱신한다.</summary>
+        void TakeFromHand(CardView view, HandZone fromHand, Side side)
         {
             fromHand.RemoveCard(view.transform);
             var drag = view.GetComponent<CardDragHandler>();
-            if (drag != null) drag.ClearHand();
-            UnityUtil.DestroySafe(view.gameObject);
+            if (drag != null) drag.ClearHand(); // 이제 손패 카드가 아니므로 드래그 연결을 끊는다
 
             if (side == Side.Player) playerCardsPlayedThisTurn++;
             else enemyCardsPlayedThisTurn++;
             RefreshManaDisplay();
-        }
-
-        /// <summary>이 카드가 해당 편 필드 위에 놓여 있는지.</summary>
-        public bool IsOnField(CardView view, Side side)
-        {
-            var field = FieldOf(side);
-            if (field == null || view == null) return false;
-            foreach (var unit in FieldCards(field)) if (unit == view) return true;
-            return false;
         }
 
         /// <summary>필드 전열에 놓인 유닛·진 카드들 (후열의 장비는 빼고). 전술 효과·AI가 사용.</summary>
@@ -541,7 +514,7 @@ namespace CardBattle
                 bool played;
                 if (card.IsSpell) played = TryCastSpell(handViews[pick], enemyHand);                                     // 전술
                 else if (card.IsEquipment) played = TryEquip(handViews[pick], enemyHand, EnemyAI.ChooseEquipSlot(enemyField)); // 장비
-                else played = TryPlaceCard(handViews[pick], enemyHand, EnemyAI.ChooseSlot(enemyField, card));             // 유닛·진
+                else played = TryPlaceCard(handViews[pick], enemyHand, EnemyAI.ChooseSlot(enemyField));             // 유닛·진
                 if (!played) break; // 안전장치 (못 냈으면 멈춘다)
             }
         }
@@ -589,9 +562,6 @@ namespace CardBattle
             else
                 SetGameOver(true, GameTexts.Victory, GamePalette.ResultVictory, enemyHealth <= 0 ? GameTexts.ReasonEnemyHealth : GameTexts.ReasonEnemyDeck);
         }
-
-        /// <summary>뽑을 카드가 없어서 진 상태인지 (확인용).</summary>
-        public bool IsDeckedOut(Side side) { return side == Side.Player ? playerDeckedOut : enemyDeckedOut; }
 
         /// <summary>게임 종료 상태를 바꾸고, 승패 배너(문구+색+이유)를 보이거나 숨긴다.</summary>
         void SetGameOver(bool over, string message, Color color, string reason)
@@ -661,10 +631,7 @@ namespace CardBattle
             hand.cards.Clear();
         }
 
-        /// <summary>
-        /// 필드의 카드를 치운다. 주의: FieldZone의 자식에는 슬롯 오브젝트 자체도 있으므로,
-        /// 슬롯은 남기고 그 외 자식(=카드)만 지운다. (예전에 슬롯까지 지워서 카드가 안 내지던 버그가 있었음)
-        /// </summary>
+        /// <summary>필드의 카드를 치운다. FieldZone의 자식에는 슬롯 오브젝트도 있으므로 슬롯은 남기고 카드만 지운다.</summary>
         static void ClearField(FieldZone field)
         {
             if (field == null) return;

@@ -112,3 +112,15 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# ---- 이 프로젝트에서 추가: 게임과 상관없는 파일 ----
+# Claude가 3D 모델을 옮길 때 쓴 임시 조각 파일
+/_incoming/
+# Claude 앱이 대화에서 보낸 파일(스크린샷 등)을 저장하는 폴더
+/Claude outputs/
+# WebGL 빌드할 때 생기는 중간 파일
+/Data/
+# 예전 작업에서 남은 스크린샷·코드 모음·빈 폴더
+/CardHandPreview.png
+/_all_scripts_dump.txt
+/2D CardBattle/

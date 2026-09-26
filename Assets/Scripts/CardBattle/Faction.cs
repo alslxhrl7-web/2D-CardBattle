@@ -11,10 +11,10 @@ namespace CardBattle
     /// <summary>카드의 큰 분류.</summary>
     public enum CardKind
     {
-        Unit,      // 장수(유닛): 필드 빈 칸에 내는 카드
+        Unit,      // 장수(유닛): 전열 빈 칸에 내는 카드
         Spell,     // 전술: 보드 위로 끌어다 놓으면 즉시 효과(spellEffect)가 나고 사라지는 카드
-        Weapon,    // 장비: 내 필드의 유닛 위에 끌어다 놓으면 그 유닛의 공격력/체력이 오르는 카드
-        Formation  // 진(陣): 필드 빈 칸에 내는 구조물. 공격력 0이면 공격하지 않고 막기만 한다
+        Weapon,    // 장비: 내 후열 칸에 놓으면 같은 레인 전열 카드의 공격력/체력이 오르는 카드
+        Formation  // 진(陣): 전열 빈 칸에 내는 구조물. 공격력 0이면 공격하지 않고 막기만 한다
     }
 
     /// <summary>

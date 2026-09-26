@@ -5,12 +5,12 @@ using UnityEngine;
 namespace CardBattle.EditorTools
 {
     /// <summary>
-    /// 새 카드(유닛·장비·전술·진) 14장, 시작 덱 2개, 덱 편집 타일, 덱 더미를 한 번에 만들어 넣는 도구.
+    /// 카드(유닛·장비·전술·진), 시작 덱, 덱 편집 타일, 덱 더미, 배틀 버튼을 한 번에 씬·에셋에 넣는 도구.
     /// 메뉴 "CardBattle/새 카드·덱·덱 더미 적용"으로 실행하며, CardBattleAutoApply가 컴파일 뒤 자동으로 한 번 불러준다.
-    /// 이미 있는 카드 에셋은 새로 만들지 않고 값만 아래 표대로 맞춘다(여러 번 실행해도 안전).
+    /// 여러 번 실행해도 안전하다: 이미 있는 카드 에셋과 이미 채워진 덱은 건드리지 않는다.
     ///
     /// 카드 수치를 바꾸고 싶으면: 에셋(Assets/CardData/...)을 인스펙터에서 직접 고치면 된다.
-    ///   (이 표는 "처음 만들 때 넣는 값"이다. 이 메뉴를 다시 실행하면 표의 값으로 돌아가니 주의)
+    ///   (아래 표는 "카드 에셋이 없을 때 처음 만드는 값"이다)
     /// </summary>
     public static class CardBattleContentSetup
     {
@@ -89,15 +89,6 @@ namespace CardBattle.EditorTools
         };
         static KeyValuePair<string, int> D(string file, int count) { return new KeyValuePair<string, int>(file, count); }
 
-        // ================= 규칙이 바뀌어서 설명을 고쳐야 하는 기존 카드 (파일 이름, 새 키워드 문구) =================
-        // 공격은 전열에서만 하고, Ranged는 "상대 Wall 무시"로 바뀌었다.
-        static readonly KeyValuePair<string, string>[] KeywordFixes =
-        {
-            new KeyValuePair<string, string>("Cannoneer", "Ranged: 상대 Wall 무시"),
-            new KeyValuePair<string, string>("Mounted_Archer", "Ranged, Hit and Run: 상대 Wall 무시"),
-            new KeyValuePair<string, string>("Wall_Guard", "Wall: 받는 피해 -1"),
-        };
-
         const string CardFolder = "Assets/CardData";              // 카드 에셋 폴더 (진영별 하위 폴더)
         const string PortraitFolder = "Assets/Portraits";         // 초상화 폴더
         const string JoseonDeckPath = "Assets/DeckData/JoseonStarterDeck.asset"; // 플레이어 시작 덱
@@ -115,8 +106,9 @@ namespace CardBattle.EditorTools
         static readonly Vector3 PlayerPilePos = new Vector3(9.9f, -2.4f, 0f);  // 배틀: 내 드로우 더미 (오른쪽 아래)
         static readonly Vector3 EnemyPilePos = new Vector3(9.9f, 3.6f, 0f);    // 배틀: 상대 드로우 더미 (오른쪽 위)
         static readonly Vector3 LobbyPilePos = new Vector3(4.6f, -0.2f, 0f);   // 처음 화면: 내 덱 (클릭 → 덱 편집)
-        static readonly Vector3 LobbyPackButtonPos = new Vector3(0f, -0.9f, 0f); // 덱 편집 버튼이 빠진 자리로 팩 열기 버튼을 올림
         const float PileScale = 0.8f;        // 배틀 화면 덱 더미 크기 배율
+        static readonly Vector3 RestartButtonPos = new Vector3(7.2f, 5.85f, 0f); // 배틀: "다시 시작" (오른쪽 위)
+        static readonly Vector3 QuitButtonPos = new Vector3(9.7f, 5.85f, 0f);    // 배틀: "게임 종료" (오른쪽 위 끝)
         const float LobbyPileScale = 1.1f;   // 처음 화면 덱 더미 크기 배율 (클릭하기 쉽게 조금 크게)
 
         /// <summary>메뉴에서 실행: 모든 단계를 적용하고 씬을 저장한다.</summary>
@@ -133,33 +125,29 @@ namespace CardBattle.EditorTools
         public static void Apply(List<string> log)
         {
             CreateCards(log);
-            FixOldKeywords(log);
             WriteDeck(JoseonDeckPath, JoseonDeck, log);
             WriteDeck(QingDeckPath, QingDeck, log);
             RefillPack(log);
             AssetDatabase.SaveAssets();
             LayoutDeckBuilderTiles(log);
             SetupDeckPiles(log);
+            SetupBattleButtons(log);
         }
 
         // ================= 1) 카드 에셋 =================
 
-        /// <summary>표의 카드를 에셋으로 만들거나(없을 때) 값을 맞춘다. 파일 이름 → 카드 사전을 돌려준다.</summary>
-        static Dictionary<string, CardData> CreateCards(List<string> log)
+        /// <summary>표의 카드 중 에셋이 없는 것만 만든다. (이미 있는 카드는 인스펙터에서 고친 값을 지키기 위해 건드리지 않음)</summary>
+        static void CreateCards(List<string> log)
         {
-            var result = new Dictionary<string, CardData>();
             foreach (var s in NewCards)
             {
                 string folder = CardFolder + "/" + s.faction;
                 EnsureFolder(folder);
                 string path = folder + "/" + s.file + ".asset";
-                var card = AssetDatabase.LoadAssetAtPath<CardData>(path);
-                bool created = card == null;
-                if (created)
-                {
-                    card = ScriptableObject.CreateInstance<CardData>();
-                    AssetDatabase.CreateAsset(card, path);
-                }
+                if (AssetDatabase.LoadAssetAtPath<CardData>(path) != null) continue; // 이미 있음
+
+                var card = ScriptableObject.CreateInstance<CardData>();
+                AssetDatabase.CreateAsset(card, path);
                 card.cardNameKo = s.ko; card.cardNameEn = s.en; card.faction = s.faction; card.cardKind = s.kind;
                 card.rarity = s.rarity; card.cost = s.cost; card.attack = s.atk; card.health = s.hp;
                 card.keywordText = s.keyword; card.flavorText = s.flavor; card.spellEffect = s.effect; card.effectValue = s.value;
@@ -167,22 +155,7 @@ namespace CardBattle.EditorTools
                 if (portrait != null) card.portrait = portrait;
                 else log.Add("그림 없음: " + s.portrait + ".png (카드는 그림 없이 만들어짐)");
                 EditorUtility.SetDirty(card);
-                result[s.file] = card;
-                if (created) log.Add("카드 생성: " + path);
-            }
-            return result;
-        }
-
-        /// <summary>기존 카드의 키워드 설명을 바뀐 규칙에 맞게 고친다.</summary>
-        static void FixOldKeywords(List<string> log)
-        {
-            foreach (var kv in KeywordFixes)
-            {
-                var card = FindCard(kv.Key);
-                if (card == null || card.keywordText == kv.Value) continue;
-                card.keywordText = kv.Value;
-                EditorUtility.SetDirty(card);
-                log.Add("설명 수정: " + card.cardNameKo + " → " + kv.Value);
+                log.Add("카드 생성: " + path);
             }
         }
 
@@ -208,11 +181,12 @@ namespace CardBattle.EditorTools
 
         // ================= 2) 덱 =================
 
-        /// <summary>덱 에셋의 내용을 표대로 바꾼다.</summary>
+        /// <summary>덱이 비어 있으면 표대로 채운다. (이미 카드가 있으면 덱 편집 화면에서 고친 내용을 지키기 위해 건드리지 않음)</summary>
         static void WriteDeck(string path, KeyValuePair<string, int>[] list, List<string> log)
         {
             var deck = AssetDatabase.LoadAssetAtPath<DeckData>(path);
             if (deck == null) { log.Add("덱 없음: " + path); return; }
+            if (deck.TotalCount() > 0) { log.Add("덱 유지: " + path + " (" + deck.TotalCount() + "장)"); return; }
             deck.entries = new List<DeckData.Entry>();
             foreach (var kv in list)
             {
@@ -329,18 +303,17 @@ namespace CardBattle.EditorTools
 
         /// <summary>
         /// 배틀 화면: "덱 N장" 글자 대신 카드 뒷면 더미 2개(내 것/상대 것)를 놓는다.
-        /// 처음 화면: "덱 편집" 버튼 대신 클릭할 수 있는 내 덱 더미를 놓는다.
+        /// 처음 화면: 클릭하면 덱 편집 화면으로 가는 내 덱 더미를 놓는다.
         /// </summary>
         static void SetupDeckPiles(List<string> log)
         {
             var manager = Object.FindAnyObjectByType<CardManager>(FindObjectsInactive.Include);
             var screens = Object.FindAnyObjectByType<ScreenManager>(FindObjectsInactive.Include);
-            var builder = Object.FindAnyObjectByType<DeckBuilderUI>(FindObjectsInactive.Include);
             if (manager == null || screens == null) { log.Add("덱 더미: CardManager/ScreenManager를 찾지 못함"); return; }
 
             // 배틀 화면 더미 2개
-            var playerPile = EnsurePile("PlayerDeckPile", null, PlayerPilePos, DeckPile.PileMode.Battle, Side.Player, manager, screens, builder);
-            var enemyPile = EnsurePile("EnemyDeckPile", null, EnemyPilePos, DeckPile.PileMode.Battle, Side.Enemy, manager, screens, builder);
+            var playerPile = EnsurePile("PlayerDeckPile", null, PlayerPilePos, DeckPile.PileMode.Battle, Side.Player, manager, screens);
+            var enemyPile = EnsurePile("EnemyDeckPile", null, EnemyPilePos, DeckPile.PileMode.Battle, Side.Enemy, manager, screens);
 
             // 기존 "덱 N장" 글자는 숨기고, 배틀 화면 목록에서 더미로 바꾼다
             var battle = new List<GameObject>(screens.battleObjects ?? new GameObject[0]);
@@ -354,31 +327,68 @@ namespace CardBattle.EditorTools
                 if (!battle.Contains(pile.gameObject)) battle.Add(pile.gameObject);
             screens.battleObjects = battle.ToArray();
 
-            // 처음 화면: 덱 편집 버튼 → 덱 더미
-            var lobby = GameObject.Find("Lobby");
-            var editButton = Object.FindAnyObjectByType<DeckEditButton>(FindObjectsInactive.Include);
-            Transform lobbyParent = lobby != null ? lobby.transform : null;
-            EnsurePile("LobbyDeckPile", lobbyParent, LobbyPilePos, DeckPile.PileMode.Lobby, Side.Player, manager, screens, builder);
-            if (lobbyParent == null)
-            {
-                var lobbyList = new List<GameObject>(screens.lobbyObjects ?? new GameObject[0]);
-                var pileGo = GameObject.Find("LobbyDeckPile");
-                if (pileGo != null && !lobbyList.Contains(pileGo)) lobbyList.Add(pileGo);
-                screens.lobbyObjects = lobbyList.ToArray();
-            }
-            if (editButton != null && editButton.gameObject.activeSelf)
-            {
-                editButton.gameObject.SetActive(false); // 버튼은 지우지 않고 꺼둔다 (필요하면 다시 켜면 됨)
-                var pack = Object.FindAnyObjectByType<PackOpenButton>(FindObjectsInactive.Include);
-                if (pack != null) pack.transform.position = LobbyPackButtonPos; // 빈자리로 팩 열기 버튼을 올림
-            }
+            // 처음 화면: 클릭하면 덱 편집으로 가는 덱 더미
+            EnsurePile("LobbyDeckPile", LobbyRoot(screens), LobbyPilePos, DeckPile.PileMode.Lobby, Side.Player, manager, screens);
             EditorUtility.SetDirty(screens);
             log.Add("덱 더미 배치: 배틀 2개(내 덱/상대 덱), 처음 화면 1개(클릭 → 덱 편집)");
         }
 
+        // ================= 5) 다시 시작 / 게임 종료 버튼 =================
+
+        /// <summary>배틀 화면 오른쪽 위에 "다시 시작", "게임 종료" 버튼을 턴 종료 버튼을 복제해서 만든다(이미 있으면 위치만 맞춤).</summary>
+        static void SetupBattleButtons(List<string> log)
+        {
+            var manager = Object.FindAnyObjectByType<CardManager>(FindObjectsInactive.Include);
+            var screens = Object.FindAnyObjectByType<ScreenManager>(FindObjectsInactive.Include);
+            var endTurn = Object.FindAnyObjectByType<EndTurnButton>(FindObjectsInactive.Include);
+            if (manager == null || screens == null || endTurn == null) { log.Add("다시 시작/게임 종료 버튼: 턴 종료 버튼을 찾지 못함"); return; }
+
+            var restart = EnsureButton<RestartButton>("RestartButton", "다시 시작", RestartButtonPos, endTurn.gameObject, screens);
+            restart.manager = manager;
+            var quit = EnsureButton<QuitGameButton>("QuitGameButton", "게임 종료", QuitButtonPos, endTurn.gameObject, screens);
+            quit.screens = screens;
+            EditorUtility.SetDirty(restart);
+            EditorUtility.SetDirty(quit);
+            EditorUtility.SetDirty(screens);
+            log.Add("배틀 버튼: 다시 시작, 게임 종료");
+        }
+
+        /// <summary>이름으로 버튼을 찾고, 없으면 template(턴 종료 버튼)을 복제해 T 버튼으로 바꾼다. 배틀 화면 목록에도 넣는다.</summary>
+        static T EnsureButton<T>(string name, string label, Vector3 position, GameObject template, ScreenManager screens) where T : ClickableButton
+        {
+            T button = null;
+            foreach (var b in Object.FindObjectsByType<T>(FindObjectsInactive.Include)) if (b.name == name) { button = b; break; }
+            if (button == null)
+            {
+                var go = Object.Instantiate(template, template.transform.parent);
+                go.name = name;
+                foreach (var old in go.GetComponents<ClickableButton>()) Object.DestroyImmediate(old); // 턴 종료 기능은 빼고
+                button = go.AddComponent<T>();
+                var bg = go.transform.Find("Background");
+                button.background = bg != null ? bg.GetComponent<SpriteRenderer>() : go.GetComponentInChildren<SpriteRenderer>();
+            }
+            button.transform.position = position;
+            var labelTf = button.transform.Find("Label");
+            var text = labelTf != null ? labelTf.GetComponent<TextMesh>() : button.GetComponentInChildren<TextMesh>();
+            if (text != null) { text.text = label; EditorUtility.SetDirty(text); }
+            if (button.background != null) button.background.color = GamePalette.NeutralButton.normal;
+
+            var battle = new List<GameObject>(screens.battleObjects ?? new GameObject[0]);
+            if (!battle.Contains(button.gameObject)) battle.Add(button.gameObject);
+            screens.battleObjects = battle.ToArray();
+            return button;
+        }
+
+        /// <summary>처음 화면 오브젝트 묶음(Lobby). 처음 화면 목록의 첫 번째 오브젝트를 쓴다.</summary>
+        static Transform LobbyRoot(ScreenManager screens)
+        {
+            return screens.lobbyObjects != null && screens.lobbyObjects.Length > 0 && screens.lobbyObjects[0] != null
+                ? screens.lobbyObjects[0].transform : null;
+        }
+
         /// <summary>이름으로 더미를 찾고, 없으면 만든다. 위치/설정은 매번 맞춘다.</summary>
         static DeckPile EnsurePile(string name, Transform parent, Vector3 position, DeckPile.PileMode mode, Side side,
-                                   CardManager manager, ScreenManager screens, DeckBuilderUI builder)
+                                   CardManager manager, ScreenManager screens)
         {
             DeckPile pile = null;
             foreach (var p in Object.FindObjectsByType<DeckPile>(FindObjectsInactive.Include))
@@ -396,9 +406,9 @@ namespace CardBattle.EditorTools
             pile.side = side;
             pile.manager = manager;
             pile.screens = screens;
-            pile.builder = builder;
             EditorUtility.SetDirty(pile);
             return pile;
         }
+
     }
 }

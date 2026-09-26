@@ -25,3 +25,4 @@ MonoBehaviour:
   keywordText: "Ranged: \uC0C1\uB300 Wall \uBB34\uC2DC"
   flavorText: "\uAC01\uAD81 \uD55C \uC790\uB8E8\uBA74 \uBC31 \uBCF4 \uBC16\uB3C4 \uB450\uB835\uC9C0 \uC54A\uB2E4."
   portrait: {fileID: 21300000, guid: 4a0acbe69d1b4bbdb2a87b38f2c37f05, type: 3}
+  model3D: {fileID: 0}
