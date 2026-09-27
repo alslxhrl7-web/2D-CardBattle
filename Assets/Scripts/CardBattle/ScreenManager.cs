@@ -43,6 +43,13 @@ namespace CardBattle
         public void ShowLobby() { Show(GameScreen.Lobby); }
         /// <summary>배틀 화면으로 — 매번 새 판이 시작된다.</summary>
         public void ShowBattle() { Show(GameScreen.Battle); }
+
+        /// <summary>게임 방식을 정하고 배틀 화면으로 (AI 대전 / 2인 대전 / 튜토리얼).</summary>
+        public void ShowBattle(GameMode mode)
+        {
+            if (manager != null) manager.mode = mode;
+            Show(GameScreen.Battle);
+        }
         /// <summary>덱 편집 화면으로.</summary>
         public void ShowDeckEdit() { Show(GameScreen.DeckEdit); }
 
@@ -61,7 +68,13 @@ namespace CardBattle
             }
 
             // 배틀 화면에 들어갈 때마다 새 판 시작 (오브젝트를 먼저 켠 다음에 해야 카드가 제자리로 간다)
-            if (screen == GameScreen.Battle && manager != null) manager.ResetGame();
+            // 배경음은 StartBattle이 켜고, 배틀이 아닌 화면에서는 끈다
+            if (screen == GameScreen.Battle && manager != null) manager.StartBattle();
+            else
+            {
+                GameAudio.StopAmbience();
+                if (manager != null) manager.LeaveOnline(); // 온라인 대전 중이었으면 연결을 끊는다 (상대에게는 "상대가 나갔습니다")
+            }
 
             Current = screen;
         }

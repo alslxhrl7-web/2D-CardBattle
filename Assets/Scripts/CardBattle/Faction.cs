@@ -49,8 +49,17 @@ namespace CardBattle
     /// </summary>
     public enum Side
     {
-        Player, // 플레이어(조선, 마우스로 조작)
-        Enemy   // 상대(청, AI가 자동으로 플레이)
+        Player, // 플레이어(조선, 화면 아래쪽)
+        Enemy   // 상대(청, 화면 위쪽 — AI 대전에서는 AI, 2인 대전에서는 두 번째 사람)
+    }
+
+    /// <summary>한 판을 어떤 방식으로 하는지. 처음 화면의 버튼마다 다르다.</summary>
+    public enum GameMode
+    {
+        VsAI,      // 배틀 시작: 청은 AI가 둔다
+        TwoPlayer, // 2인 대전: 한 컴퓨터에서 조선·청을 사람 둘이 번갈아 둔다
+        Tutorial,  // 튜토리얼: 정해진 덱으로 안내를 따라 한 판
+        Online     // 온라인 대전: 서버로 다른 컴퓨터의 사람과 (OnlineMatch.cs)
     }
 
     /// <summary>Side에 붙여 쓰는 편의 함수 모음.</summary>

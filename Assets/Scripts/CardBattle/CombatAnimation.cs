@@ -9,6 +9,7 @@ namespace CardBattle
     ///   1) 레인마다 공격하는 유닛이 상대 쪽으로 돌진했다가 돌아온다
     ///   2) 맞은 카드는 빨갛게 번쩍이고, 머리 위에 "-피해" 숫자가 떠올랐다 사라진다 (히어로가 맞으면 체력 표시 쪽에)
     ///   3) 죽은 카드는 빙글 돌면서 작아져 사라진다
+    ///   소리: 돌진할 때 유닛별 공격음, 부딪힐 때 타격음(Hit_1·Hit_2 번갈아), 죽을 때 사망음 (GameAudio)
     /// 속도나 거리를 바꾸고 싶으면 아래 상수만 고치면 된다. CardManager가 턴 종료 때 코루틴으로 실행한다.
     /// </summary>
     public static class CombatAnimation
@@ -64,13 +65,16 @@ namespace CardBattle
                     hit.attacker.SetLayerBase(FrontLayerBase); // 돌진하는 카드는 위에 그린다
                 }
 
-                // 돌진
+                // 돌진 (유닛마다 자기 공격음)
+                foreach (var hit in lane) GameAudio.PlayAttack(hit.attacker.data);
                 yield return runner.StartCoroutine(MoveAll(lane, homes, aims, LungeTime));
 
-                // 부딪힌 순간: 번쩍임 + 피해 숫자
+                // 부딪힌 순간: 번쩍임 + 피해 숫자 + 타격음 (방어로 피해가 0이면 막는 소리)
                 for (int i = 0; i < lane.Count; i++)
                 {
                     var hit = lane[i];
+                    if (hit.damage > 0) GameAudio.PlayHit();
+                    else GameAudio.Play(GameAudio.WallBlock);
                     if (hit.target != null)
                     {
                         runner.StartCoroutine(Flash(hit.target));
@@ -92,6 +96,7 @@ namespace CardBattle
         public static IEnumerator PlayDeaths(List<CardView> dead)
         {
             if (dead == null || dead.Count == 0) yield break;
+            GameAudio.Play(GameAudio.UnitDeath);
 
             var startScale = new List<Vector3>();
             foreach (var view in dead) startScale.Add(view != null ? view.transform.localScale : Vector3.zero);

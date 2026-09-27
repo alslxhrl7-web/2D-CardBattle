@@ -5,7 +5,7 @@ namespace CardBattle
 {
     /// <summary>
     /// 손패의 카드 하나를 마우스로 집어서(OnMouseDown) 드래그하고(OnMouseDrag) 놓으면(OnMouseUp)
-    /// 그 아래 있는 FieldSlot에 배치를 시도하는 컴포넌트. (유닛·진은 전열 칸에, 장비는 후열 칸에, 전술은 보드 위 아무 곳에 놓는다) 카드 프리팹 루트에 붙는다.
+    /// 그 아래 있는 FieldSlot에 배치를 시도하는 컴포넌트. (유닛·진은 전열 칸에, 장비는 후열 칸에, 전술은 보드 쪽 아무 곳에 놓는다) 카드 프리팹 루트에 붙는다.
     /// Unity의 OnMouse* 메시지를 받으려면 이 오브젝트에 Collider2D가 있어야 한다(프리팹에 BoxCollider2D 추가됨).
     /// 이 프로젝트는 Active Input Handling이 새 Input System 전용으로 설정돼 있어, 예전 Input 클래스 대신
     /// UnityEngine.InputSystem의 Mouse.current로 마우스 좌표를 읽는다.
@@ -20,7 +20,7 @@ namespace CardBattle
         bool dragging;        // 지금 드래그 중인지
 
         const int DragSortingBase = 999; // 드래그 중인 카드는 다른 모든 카드보다 항상 위에 그려지도록 하는 sortingOrder 버킷
-        const float SpellCastRise = 1.5f; // 전술 카드를 손패 위치보다 이만큼(월드 유닛) 위로 끌어 올려 놓으면 사용된다
+        const float SpellCastRise = 1.5f; // 전술 카드를 손패에서 보드 쪽으로 이만큼(월드 유닛) 끌어 놓으면 사용된다
 
         /// <summary>시작할 때 같은 오브젝트의 CardView를 찾아둔다.</summary>
         void Awake()
@@ -49,7 +49,7 @@ namespace CardBattle
         void OnMouseDown()
         {
             if (manager == null || myHand == null) return; // 손패 카드가 아니면(진열용 등) 무시
-            if (!manager.IsPlayerHand(myHand)) return;     // 상대(청) 손패는 드래그 불가 — 플레이어 손패만 조작 가능
+            if (!manager.CanControlHand(myHand)) return;   // 지금 차례인 사람의 손패만 집을 수 있다 (AI 손패는 항상 불가)
             if (manager.IsBusy) return;                    // 전투 연출 중에는 카드를 집을 수 없다
 
             dragging = true;
@@ -97,8 +97,8 @@ namespace CardBattle
             bool done = false;
             if (data != null && data.IsSpell)
             {
-                // 손패 위치보다 SpellCastRise 이상 끌어 올렸으면 사용
-                if (transform.position.y > myHand.transform.position.y + SpellCastRise)
+                // 손패에서 SpellCastRise 이상 보드 쪽으로 끌어냈으면 사용 (위쪽 손패는 아래로 끌어야 보드 쪽)
+                if (Mathf.Abs(transform.position.y - myHand.transform.position.y) > SpellCastRise)
                     done = manager.TryCastSpell(view, myHand);
             }
             else if (data != null && data.IsEquipment)
@@ -125,7 +125,7 @@ namespace CardBattle
         {
             var slot = FindSlotUnderCard();
             if (slot == null) return null;
-            var field = manager.FieldOf(Side.Player);
+            var field = manager.FieldOf(manager.SideOf(myHand));
             bool front;
             int lane = field.LaneOf(slot, out front);
             if (lane < 0) return null;            // 상대 필드 칸

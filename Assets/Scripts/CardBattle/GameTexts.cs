@@ -24,6 +24,36 @@ namespace CardBattle
         public const string ReasonBoth = "양쪽이 동시에 패배 조건에 걸렸습니다";   // 무승부 이유
         public const string GameOverHint = "턴 종료 버튼을 누르면 계속"; // 승패 배너 아래 안내 (처음 화면이 있으면 처음 화면으로, 없으면 새 판)
 
+        // ---- 2인 대전 (한 컴퓨터에서 번갈아) ----
+        public const string JoseonName = "조선";   // 아래쪽 편 이름
+        public const string QingName = "청";       // 위쪽 편 이름
+        public const string PlayerManaTwoPlayer = "조선 군력 {0} / {1}   (턴 {2})"; // 2인 대전에서 아래쪽 군력
+        public const string EnemyManaTwoPlayer = "청 군력 {0} / {1}";               // 2인 대전에서 위쪽 군력
+        public const string PlayerHealthTwoPlayer = "조선 체력 {0} / {1}";          // 2인 대전에서 아래쪽 체력
+        public const string EnemyHealthTwoPlayer = "청 체력 {0} / {1}";             // 2인 대전에서 위쪽 체력
+        public const string CurtainTurn = "{0} 차례입니다\n\n상대는 화면을 보지 않게 자리를 넘겨 주세요\n(화면을 클릭하면 시작)"; // {0}=편 이름
+        public const string TurnInfo = "지금: {0} 차례\n\n카드를 다 냈으면\n[턴 종료]를 누르세요"; // 오른쪽 안내판
+        public const string SideWins = "{0} 승리!";                       // {0}=이긴 편
+        public const string ReasonSideHealth = "{0}의 체력이 모두 닳았습니다";   // {0}=진 편
+        public const string ReasonSideDeck = "{0}은 더 이상 뽑을 카드가 없습니다"; // {0}=진 편
+
+        // ---- 온라인 대전 (오른쪽 안내판, 승패 배너) ----
+        public const string OnlineConnecting = "서버에 연결하는 중…\n\n(서버가 잠들어 있으면\n깨어나는 데 1분쯤 걸려요)";
+        public const string OnlineWaiting = "상대를 기다리는 중…\n\n다른 사람이 [온라인 대전]을\n누르면 바로 시작합니다";
+        public const string OnlineFailed = "서버에 연결하지 못했습니다\n\n[다시 시작]을 누르면\n다시 시도합니다";
+        public const string OnlineMyTurn = "내 차례\n\n카드를 다 냈으면\n[턴 종료]를 누르세요";
+        public const string OnlineTheirTurn = "상대 차례\n\n상대가 카드를 내는 중…";
+        public const string OnlineOpponentLeft = "상대가 나갔습니다";   // 승패 배너
+        public const string OnlineConnectionLost = "연결이 끊겼습니다"; // 승패 배너
+
+        // ---- 튜토리얼 안내판 (오른쪽) ----
+        public const string TutorialPlaceUnit = "튜토리얼 1/4 · 유닛 내기\n\n손패의 [의병]을 끌어서\n앞줄(전열) 빈 칸에 놓으세요.\n\n카드 왼쪽 위 숫자가\n필요한 군력입니다.";
+        public const string TutorialEndFirstTurn = "좋아요!\n\n이제 [턴 종료]를 누르세요.\n같은 줄 카드끼리 싸우고,\n앞이 비어 있으면\n적 장수를 칩니다.";
+        public const string TutorialEquip = "튜토리얼 2/4 · 장비\n\n[편전]을 의병 바로 뒤\n뒷줄(후열) 칸에 놓으면\n앞 카드 공격력이 오릅니다.";
+        public const string TutorialEndSecondTurn = "장비는 뒷줄에 남아서\n앞에 새로 오는 카드도\n강하게 해 줍니다.\n\n[턴 종료]를 누르세요.";
+        public const string TutorialSpell = "튜토리얼 3/4 · 전술\n\n[봉수]를 손패에서 위쪽\n(전장 쪽)으로 끌어 놓으면\n바로 효과가 납니다.\n(카드 2장 뽑기)";
+        public const string TutorialFreePlay = "튜토리얼 4/4 · 실전\n\n이제 자유롭게 싸워서\n청군의 체력을 0으로\n만드세요!";
+
         // ---- 덱 빌더 ----
         public const string DeckBuilderReady = "덱 카드 수: {0}장 (저장 가능)";            // {0}=총 장수
         public const string DeckBuilderTooSmall = "덱 카드 수: {0}장 (최소 {1}장 필요)";   // {0}=총 장수, {1}=최소 장수

@@ -5,7 +5,7 @@ using UnityEngine;
 namespace CardBattle.EditorTools
 {
     /// <summary>
-    /// 카드(유닛·장비·전술·진), 시작 덱, 덱 편집 타일, 덱 더미, 배틀 버튼을 한 번에 씬·에셋에 넣는 도구.
+    /// 카드(유닛·장비·전술·진), 시작 덱·튜토리얼 덱, 덱 편집 타일, 덱 더미, 배틀 버튼, 처음 화면의 튜토리얼·2인 대전·온라인 대전 버튼을 한 번에 씬·에셋에 넣는 도구.
     /// 메뉴 "CardBattle/새 카드·덱·덱 더미 적용"으로 실행하며, CardBattleAutoApply가 컴파일 뒤 자동으로 한 번 불러준다.
     /// 여러 번 실행해도 안전하다: 이미 있는 카드 에셋과 이미 채워진 덱은 건드리지 않는다.
     ///
@@ -89,11 +89,30 @@ namespace CardBattle.EditorTools
         };
         static KeyValuePair<string, int> D(string file, int count) { return new KeyValuePair<string, int>(file, count); }
 
+        // ================= 튜토리얼 덱 — 섞지 않고 위에서부터 순서대로 뽑는다 =================
+        // 첫 손패 5장에 의병(1턴)·편전(2턴)·봉수(3턴)가 들어오도록 맨 앞에 둔다 (TutorialGuide 단계 순서).
+        static readonly KeyValuePair<string, int>[] TutorialJoseonDeck =
+        {
+            D("Righteous_Army_Militia", 1), D("Pyeonjeon", 1), D("Beacon_Fire", 1), D("Wall_Guard", 1), D("Joseon_Archer", 1),
+            D("Cannoneer", 1), D("Warrior_Monk", 1), D("Righteous_Army_Militia", 1), D("Kim_Sangyong", 1), D("Dujeonggap", 1),
+            D("Wooden_Palisade", 1), D("Joseon_Archer", 1), D("Wall_Guard", 1), D("Singijeon", 1), D("Cannoneer", 1),
+            D("Warrior_Monk", 1), D("Im_Gyeongeop", 1),
+        };
+        // 청 첫 손패에는 비용 1 카드가 없다 → 1턴에 청은 아무것도 못 내서, 의병이 살아남아 장비 단계를 할 수 있다.
+        static readonly KeyValuePair<string, int>[] TutorialQingDeck =
+        {
+            D("Banner_Spearman", 1), D("Shield_Cart", 1), D("Banner_Spearman", 1), D("Mounted_Archer", 1), D("Bannerman_Rider", 1),
+            D("Iron_Barding", 1), D("Banner_Spearman", 1), D("Steppe_Raider", 1), D("Mounted_Archer", 1), D("Shield_Cart", 1),
+            D("Bannerman_Rider", 1), D("Banner_Spearman", 1), D("Steppe_Raider", 1), D("Mongol_Horse_Archer", 1),
+        };
+
         const string CardFolder = "Assets/CardData";              // 카드 에셋 폴더 (진영별 하위 폴더)
         const string PortraitFolder = "Assets/Portraits";         // 초상화 폴더
         const string JoseonDeckPath = "Assets/DeckData/JoseonStarterDeck.asset"; // 플레이어 시작 덱
         const string QingDeckPath = "Assets/DeckData/QingStarterDeck.asset";     // 상대 시작 덱
         const string JoseonPackPath = "Assets/PackData/JoseonBasicPack.asset";   // 조선 기본팩
+        const string TutorialJoseonPath = "Assets/DeckData/Tutorial_Joseon.asset"; // 튜토리얼 조선 덱
+        const string TutorialQingPath = "Assets/DeckData/Tutorial_Qing.asset";     // 튜토리얼 청 덱
 
         // ---- 덱 편집 화면 타일 배치 (9칸 × 3줄 = 27칸) ----
         const int TileColumns = 9;           // 한 줄에 놓을 타일 수
@@ -110,6 +129,9 @@ namespace CardBattle.EditorTools
         static readonly Vector3 RestartButtonPos = new Vector3(7.2f, 5.85f, 0f); // 배틀: "다시 시작" (오른쪽 위)
         static readonly Vector3 QuitButtonPos = new Vector3(9.7f, 5.85f, 0f);    // 배틀: "게임 종료" (오른쪽 위 끝)
         const float LobbyPileScale = 1.1f;   // 처음 화면 덱 더미 크기 배율 (클릭하기 쉽게 조금 크게)
+        static readonly Vector3 TutorialButtonPos = new Vector3(0f, -2.4f, 0f);  // 처음 화면: "튜토리얼" (팩 열기 아래)
+        static readonly Vector3 TwoPlayerButtonPos = new Vector3(0f, -3.9f, 0f); // 처음 화면: "2인 대전"
+        static readonly Vector3 OnlineButtonPos = new Vector3(0f, -5.4f, 0f);    // 처음 화면: "온라인 대전" (맨 아래)
 
         /// <summary>메뉴에서 실행: 모든 단계를 적용하고 씬을 저장한다.</summary>
         [MenuItem("CardBattle/새 카드·덱·덱 더미 적용", false, 30)]
@@ -128,10 +150,13 @@ namespace CardBattle.EditorTools
             WriteDeck(JoseonDeckPath, JoseonDeck, log);
             WriteDeck(QingDeckPath, QingDeck, log);
             RefillPack(log);
+            var tutorialJoseon = WriteTutorialDeck(TutorialJoseonPath, "튜토리얼 조선", Faction.Joseon, TutorialJoseonDeck, log);
+            var tutorialQing = WriteTutorialDeck(TutorialQingPath, "튜토리얼 청", Faction.Qing, TutorialQingDeck, log);
             AssetDatabase.SaveAssets();
             LayoutDeckBuilderTiles(log);
             SetupDeckPiles(log);
             SetupBattleButtons(log);
+            SetupModeButtons(tutorialJoseon, tutorialQing, log);
         }
 
         // ================= 1) 카드 에셋 =================
@@ -196,6 +221,29 @@ namespace CardBattle.EditorTools
             }
             EditorUtility.SetDirty(deck);
             log.Add("덱 구성: " + path + " (" + deck.TotalCount() + "장)");
+        }
+
+        /// <summary>튜토리얼 덱은 순서가 중요해서 매번 표대로 다시 쓴다(없으면 만든다). 덱 편집 화면에는 나오지 않는다.</summary>
+        static DeckData WriteTutorialDeck(string path, string deckName, Faction faction, KeyValuePair<string, int>[] list, List<string> log)
+        {
+            var deck = AssetDatabase.LoadAssetAtPath<DeckData>(path);
+            if (deck == null)
+            {
+                deck = ScriptableObject.CreateInstance<DeckData>();
+                AssetDatabase.CreateAsset(deck, path);
+            }
+            deck.deckName = deckName;
+            deck.faction = faction;
+            deck.entries = new List<DeckData.Entry>();
+            foreach (var kv in list)
+            {
+                var card = FindCard(kv.Key);
+                if (card == null) { log.Add("튜토리얼 덱에 넣을 카드 없음: " + kv.Key); continue; }
+                deck.entries.Add(new DeckData.Entry { card = card, count = kv.Value });
+            }
+            EditorUtility.SetDirty(deck);
+            log.Add("튜토리얼 덱: " + path + " (" + deck.TotalCount() + "장)");
+            return deck;
         }
 
         /// <summary>조선 기본팩에 새 조선 카드도 들어가도록 카드 풀을 다시 채운다.</summary>
@@ -377,6 +425,74 @@ namespace CardBattle.EditorTools
             if (!battle.Contains(button.gameObject)) battle.Add(button.gameObject);
             screens.battleObjects = battle.ToArray();
             return button;
+        }
+
+        // ================= 6) 튜토리얼 / 2인 대전 버튼 =================
+
+        /// <summary>
+        /// 처음 화면에 "튜토리얼", "2인 대전" 버튼을 "배틀 시작" 버튼을 복제해서 만들고(이미 있으면 위치·글자만 맞춤),
+        /// CardManager에 튜토리얼 덱을 연결한다.
+        /// </summary>
+        static void SetupModeButtons(DeckData tutorialJoseon, DeckData tutorialQing, List<string> log)
+        {
+            var manager = Object.FindAnyObjectByType<CardManager>(FindObjectsInactive.Include);
+            ScreenButton battleStart = null;
+            foreach (var b in Object.FindObjectsByType<ScreenButton>(FindObjectsInactive.Include))
+                if (b.name == "BattleStartButton") battleStart = b;
+            if (manager == null || battleStart == null) { log.Add("튜토리얼/2인 대전 버튼: 배틀 시작 버튼을 찾지 못함"); return; }
+
+            manager.tutorialPlayerDeck = tutorialJoseon;
+            manager.tutorialEnemyDeck = tutorialQing;
+            EditorUtility.SetDirty(manager);
+
+            battleStart.mode = GameMode.VsAI;
+            EditorUtility.SetDirty(battleStart);
+            EnsureModeButton("TutorialButton", "튜토리얼", TutorialButtonPos, GameMode.Tutorial, battleStart);
+            EnsureModeButton("TwoPlayerButton", "2인 대전", TwoPlayerButtonPos, GameMode.TwoPlayer, battleStart);
+            EnsureModeButton("OnlineButton", "온라인 대전", OnlineButtonPos, GameMode.Online, battleStart);
+            SetupOnlineMatch(manager, log);
+            log.Add("처음 화면 버튼: 튜토리얼, 2인 대전, 온라인 대전 (+ 튜토리얼 덱 연결)");
+        }
+
+        /// <summary>
+        /// 온라인 대전 오브젝트(OnlineMatch)를 씬에 하나 두고(없으면 만든다) CardManager와 연결하고,
+        /// 상대 덱을 이름으로 찾을 수 있게 모든 카드 에셋을 목록에 넣는다. 서버 주소(serverUrl)는 이미 있으면 건드리지 않는다.
+        /// </summary>
+        static void SetupOnlineMatch(CardManager manager, List<string> log)
+        {
+            var online = Object.FindAnyObjectByType<OnlineMatch>(FindObjectsInactive.Include);
+            if (online == null) online = new GameObject("OnlineMatch").AddComponent<OnlineMatch>();
+            online.manager = manager;
+            manager.online = online;
+
+            online.cardLibrary = new List<CardData>();
+            foreach (var guid in AssetDatabase.FindAssets("t:CardData"))
+            {
+                var card = AssetDatabase.LoadAssetAtPath<CardData>(AssetDatabase.GUIDToAssetPath(guid));
+                if (card != null) online.cardLibrary.Add(card);
+            }
+            EditorUtility.SetDirty(online);
+            EditorUtility.SetDirty(manager);
+            log.Add("온라인 대전: 카드 " + online.cardLibrary.Count + "장 등록, 서버 " + online.serverUrl);
+        }
+
+        /// <summary>이름으로 버튼을 찾고, 없으면 template(배틀 시작 버튼)을 같은 부모(Lobby) 아래에 복제한다.</summary>
+        static void EnsureModeButton(string name, string label, Vector3 position, GameMode mode, ScreenButton template)
+        {
+            ScreenButton button = null;
+            foreach (var b in Object.FindObjectsByType<ScreenButton>(FindObjectsInactive.Include))
+                if (b.name == name) button = b;
+            if (button == null)
+            {
+                button = Object.Instantiate(template.gameObject, template.transform.parent).GetComponent<ScreenButton>();
+                button.name = name;
+            }
+            button.transform.position = position;
+            button.target = GameScreen.Battle;
+            button.mode = mode;
+            var text = button.GetComponentInChildren<TextMesh>(true);
+            if (text != null) { text.text = label; EditorUtility.SetDirty(text); }
+            EditorUtility.SetDirty(button);
         }
 
         /// <summary>처음 화면 오브젝트 묶음(Lobby). 처음 화면 목록의 첫 번째 오브젝트를 쓴다.</summary>

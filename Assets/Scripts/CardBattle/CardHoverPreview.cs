@@ -5,7 +5,7 @@ namespace CardBattle
     /// <summary>
     /// 카드에 마우스를 올리면 화면 왼쪽에 그 카드를 크게 보여주는 미리보기.
     /// 카드가 작아서 설명 글자가 안 읽힐 때, 올려두기만 하면 큰 카드로 설명을 읽을 수 있다.
-    /// 손패·필드·팩 결과·덱 편집 타일 카드에 자동으로 붙는다(상대 손패 카드는 보여주지 않음).
+    /// 손패·필드·팩 결과·덱 편집 타일 카드에 자동으로 붙는다(상대 손패·뒷면 카드는 보여주지 않음).
     /// 미리보기 위치/크기는 아래 상수만 바꾸면 된다.
     /// </summary>
     public class CardHoverPreview : MonoBehaviour
@@ -33,7 +33,7 @@ namespace CardBattle
         void OnMouseEnter()
         {
             if (view == null || view.data == null) return;
-            if (IsEnemyHandCard()) return; // 상대 손패는 비밀
+            if (IsHiddenHandCard()) return; // 상대 손패는 비밀
             Show();
         }
 
@@ -49,10 +49,11 @@ namespace CardBattle
             if (previewOwner == this) Hide();
         }
 
-        /// <summary>이 카드가 상대 손패에 들어있는지.</summary>
-        bool IsEnemyHandCard()
+        /// <summary>이 카드가 지금 조작할 수 없는 손패(AI 손패, 2인 대전에서 차례가 아닌 쪽)에 있는지.</summary>
+        bool IsHiddenHandCard()
         {
-            return manager != null && manager.enemyHand != null && transform.parent == manager.enemyHand.transform;
+            var hand = transform.parent != null ? transform.parent.GetComponent<HandZone>() : null;
+            return manager != null && hand != null && !manager.CanControlHand(hand);
         }
 
         /// <summary>이 카드의 큰 복사본을 만들어 왼쪽에 띄운다.</summary>

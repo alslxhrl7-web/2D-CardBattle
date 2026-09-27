@@ -124,3 +124,6 @@ InitTestScene*.unity*
 /CardHandPreview.png
 /_all_scripts_dump.txt
 /2D CardBattle/
+
+# 온라인 대전 서버의 설치 파일 (npm install로 다시 생김)
+/Server/node_modules/

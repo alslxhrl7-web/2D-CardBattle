@@ -96,6 +96,14 @@ namespace CardBattle
         public static readonly ButtonColors GreenButton = new ButtonColors(
             new Color(0.14f, 0.42f, 0.20f), new Color(0.20f, 0.58f, 0.28f), new Color(0.09f, 0.28f, 0.13f)); // 평소, 마우스 올림, 누름
 
+        // 2인 대전 차례 가림막: 거의 불투명한 남색 (상대 손패가 비치지 않게)
+        public static readonly ButtonColors CurtainButton = new ButtonColors(
+            new Color(0.06f, 0.07f, 0.12f, 0.97f), new Color(0.09f, 0.10f, 0.17f, 0.97f), new Color(0.04f, 0.05f, 0.08f, 0.97f)); // 평소, 마우스 올림, 누름
+
+        // ---- 오른쪽 안내판 (튜토리얼·2인 대전) ----
+        public static readonly Color InfoBackdrop = new Color(0f, 0f, 0f, 0.7f);    // 안내판 배경
+        public static readonly Color InfoText = new Color(1f, 0.93f, 0.75f);        // 안내 글자 (연한 금색)
+
         // ---- 승패 배너 ----
         public static readonly Color ResultVictory = new Color(1f, 0.85f, 0.3f);      // "승리!" 금색
         public static readonly Color ResultDefeat = new Color(0.9f, 0.3f, 0.28f);     // "패배..." 빨강

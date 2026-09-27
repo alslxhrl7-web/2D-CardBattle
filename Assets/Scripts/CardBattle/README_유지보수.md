@@ -55,6 +55,14 @@ Play를 누르면 **처음 화면**이 뜹니다.
 | 덱 더미 모양(두께·크기)·위치 | `DeckPile.cs` 위쪽 숫자들, 위치는 `Editor/CardBattleContentSetup.cs` 위쪽 |
 | 카드 뒷면 그림 | `Assets/Resources/CardBacks/CardBack.png` 교체 |
 | 배경 그림 | `Assets/Resources/Backgrounds/BattleBackground.png` 파일을 같은 이름으로 교체 (밝기는 `SceneBackground.cs`의 `Tint`) |
+| 튜토리얼 안내 문구, 2인 대전 문구("조선 차례입니다" 등) | `GameTexts.cs` |
+| 튜토리얼 단계 순서·단계마다 허락하는 행동 | `TutorialGuide.cs` |
+| 튜토리얼 덱 (섞지 않고 적힌 순서대로 뽑음) | `Editor/CardBattleContentSetup.cs`의 `TutorialJoseonDeck`/`TutorialQingDeck` 표 → 메뉴 "새 카드·덱·덱 더미 적용" |
+| 온라인 대전 서버 주소 | 씬의 `OnlineMatch` 오브젝트 → Server Url |
+| 온라인 안내 문구("상대를 기다리는 중" 등) | `GameTexts.cs`의 `Online…` |
+| 오른쪽 안내판 위치·크기, 가림막 색 | `CardManager.cs`의 `InfoPanelPos`, `GamePalette.cs`의 `CurtainButton`/`InfoBackdrop` |
+| 효과음·배경음 파일 | `Assets/Resources/Sounds/` 안의 같은 이름 .wav로 교체 (코드 수정 불필요) |
+| 효과음·배경음 크기, 어디서 어떤 소리가 나는지 | `GameAudio.cs` 위쪽 (`effectVolume`, `ambienceVolume`) |
 
 ## 자주 하는 작업
 
@@ -90,6 +98,23 @@ Play를 누르면 **처음 화면**이 뜹니다.
 
 **덱 더미.** 배틀 화면 오른쪽 위/아래의 카드 뒷면 더미가 남은 덱이다(장수가 줄면 더미가 얇아짐). 처음 화면의 덱 더미를 클릭하면 덱 편집 화면으로 간다.
 
+**게임 방식 4가지.** 처음 화면 버튼마다 `ScreenButton.mode`가 다르다.
+- 배틀 시작(`VsAI`): 청은 AI가 둔다(예전과 같음).
+- 튜토리얼(`Tutorial`): 섞지 않은 튜토리얼 덱으로 한 판. 오른쪽 안내판이 "유닛 내기 → 턴 종료 → 장비 → 턴 종료 → 전술 → 자유 플레이"를 차례로 알려주고, 시킨 행동을 하기 전에는 다른 카드·턴 종료가 막힌다(`TutorialGuide.cs`). 첫 손패에 의병·편전·봉수가 들어오도록 덱 순서가 정해져 있고, 청 첫 손패엔 비용 1 카드가 없어서 1턴에 의병이 안전하다.
+- 2인 대전(`TwoPlayer`): 한 컴퓨터에서 아래 조선, 위 청을 두 사람이 번갈아 둔다. 한 턴 = 먼저 둘 사람 → 턴 종료 → 나중 사람 → 턴 종료 → 전투. 먼저 두는 편은 턴마다 바뀐다(홀수 턴 조선, 짝수 턴 청). 차례가 바뀔 때마다 화면 전체를 덮는 가림막(`TurnCurtain.cs`)이 뜨고, 다음 사람이 클릭하면 그 사람 손패만 앞면으로 보인다(나머지는 카드 뒷면). 위쪽 손패의 전술 카드는 아래(보드 쪽)로 끌어 놓으면 쓴다.
+- 온라인 대전(`Online`): 다른 컴퓨터의 사람과 서버로 대전. 누르면 서버에 접속해 상대를 기다리고, 다른 사람이 온라인 대전을 누르면 바로 시작한다(먼저 기다리던 사람 = 조선·내 덱, 나중 = 청 시작 덱). 차례 규칙은 2인 대전과 같고 각자 화면 아래쪽이 나, 상대 손패는 뒷면. 서버 켜는 법·인터넷에 올리는 법은 프로젝트 폴더의 `Server/README.md`.
+  - 서버 주소: 씬의 `OnlineMatch` 오브젝트 → Server Url (내 PC 테스트 `ws://localhost:8080`, 배포 후 `wss://….onrender.com`). 웹 빌드 전에 바꿔야 한다.
+  - 동작 방식: 서버는 짝짓기와 메시지 전달만 한다. 두 게임이 섞은 덱 순서를 서로 보내고(`deck|…`), 카드를 낼 때마다 "몇 번째 손패를 몇 번 레인에"를 보낸다(`OnlineMatch.cs`). 규칙 계산에 무작위가 없어서 두 화면이 똑같이 흘러간다. 새 카드 효과에 무작위를 넣으면 두 화면이 어긋나므로, 그때는 섞은 덱처럼 결과를 한쪽이 정해서 보내야 한다.
+  - 상대가 나가거나 연결이 끊기면 "상대가 나갔습니다"/"연결이 끊겼습니다"로 끝난다. "다시 시작"은 새 상대를 찾는다.
+- "다시 시작"은 지금 방식 그대로 새 판을 시작한다.
+
+**효과음·배경음.** 소리는 모두 `GameAudio.cs`가 낸다(씬에 따로 놓을 것 없음). 파일은 `Assets/Resources/Sounds/`에 있다.
+- 공통: `CardPlace`(카드 소환) `CardDraw`(드로우) `Shuffle`(새 판) `Equip`(장비) `Spell`(전술) `UnitDeath`(사망) `WallBlock`(피해 0으로 막음) `Victory` `Defeat` `Draw`(무승부) `Click`(버튼) `PackOpen`(팩 개봉)
+- 전투: 돌진할 때 `Attacks/카드에셋이름.wav`(예: `Attacks/Im_Gyeongeop.wav`, 없으면 `Attacks/Default.wav`), 부딪힐 때 `Hit_1`·`Hit_2`를 번갈아
+- 배경음: `BattleAmbience` — 배틀 시작/다시 시작 때 반복 재생, 처음 화면으로 가거나 승패가 나면 멈춘다
+- 새 유닛에 공격음을 주려면 `Attacks/` 폴더에 카드 에셋 이름과 같은 .wav를 넣기만 하면 된다.
+- 출처: 칼·창·도끼·말 소리, 타격음, 배경음 = VARCO Sound(NC AI)로 생성. 대포 = OpenGameArt "Battle at sea"(Thimras, CC0). 화살 = Freesound #205938(Twisted_Euphoria, CC0). 나머지(카드·버튼·승패 등) = 코드로 직접 합성. VARCO 결과물의 상업적 이용 조건은 NC AI에 확인할 것.
+
 **itch.io에 올리기.** 메뉴 **CardBattle → itch.io용 WebGL 빌드**를 누르면(약 15~20분) 한글 글꼴 적용 → 웹 설정 → 빌드 → `Builds/CardBattle_itch.zip` 생성까지 한 번에 된다. 결과는 `Logs/CardBattleWebBuild.log`. 웹에서는 Unity 기본 글꼴에 한글이 없어서 `Assets/Fonts/NanumGothic`(SIL OFL, 무료 배포 가능)을 쓴다. 새 글자(TextMesh)를 씬에 추가했다면 **CardBattle → 한글 글꼴 적용**을 한 번 눌러 준다.
 
 ## 주의할 점
@@ -97,11 +122,13 @@ Play를 누르면 **처음 화면**이 뜹니다.
 - 인스펙터에 보이는 필드 이름(`playerHand`, `manaText` 등)을 코드에서 바꾸면 씬 연결이 끊깁니다. 이름을 바꿔야 한다면 `[UnityEngine.Serialization.FormerlySerializedAs("옛이름")]`을 붙이세요.
 - MonoBehaviour 클래스 이름과 파일 이름은 같아야 합니다.
 - `Editor` 폴더 안의 스크립트는 에디터 전용이라 게임 빌드에 들어가지 않습니다.
-- 배경 그림은 `Resources` 폴더 안에 있어야 코드가 불러올 수 있습니다. 파일 이름·위치를 바꾸면 `SceneBackground.cs`의 `ResourcePath`도 같이 바꾸세요.
+- 배경 그림·소리 파일은 `Resources` 폴더 안에 있어야 코드가 불러올 수 있습니다. 파일 이름·위치를 바꾸면 `SceneBackground.cs`의 `ResourcePath`도 같이 바꾸세요.
 
 ## 파일 구성
 
 - **흐름**: `CardManager.cs` (한 판 진행), `LaneCombat.cs` (전투 규칙), `CombatAnimation.cs` (전투 연출), `EnemyAI.cs` (상대 판단), `ManaPool.cs` (군력)
+- **소리**: `GameAudio.cs` (효과음·배경음, 파일은 `Assets/Resources/Sounds/`)
+- **게임 방식**: `TutorialGuide.cs` (튜토리얼 단계), `TurnCurtain.cs` (2인 대전 차례 가림막), `OnlineMatch.cs` (온라인: 매칭·덱 교환·행동 주고받기), `OnlineSocket.cs` + `Assets/Plugins/WebGL/OnlineSocket.jslib` (서버 연결: 에디터·PC / 웹). 흐름은 `CardManager.cs`의 "2인 대전"·"오른쪽 안내판" 구역
 - **데이터**: `CardData.cs`, `DeckData.cs`, `CardPackData.cs`, `Faction.cs` (진영/희귀도/편 열거형)
 - **보드**: `HandZone.cs`, `FieldZone.cs`, `FieldSlot.cs`, `CardView.cs`, `CardDragHandler.cs`, `CardSlotMover.cs`
 - **화면 UI**: `ScreenManager.cs`(화면 전환), `ScreenButton.cs`, `ClickableButton.cs`와 버튼들, `DeckBuilderUI.cs`, `DeckBuilderTile.cs`, `PackOpenerUI.cs`, `CardPackOpener.cs`
@@ -113,5 +140,6 @@ Play를 누르면 **처음 화면**이 뜹니다.
 ## 아직 없는 것
 
 - 보유 카드(컬렉션): 팩에서 나온 카드는 보여주기만 하고 덱 빌더에 반영되지 않습니다.
-- 턴 교대: 턴 종료 시 양쪽이 함께 드로우하고, 상대는 바로 카드를 냅니다.
+- 턴 교대: AI 대전에서는 턴 종료 시 양쪽이 함께 드로우하고, 상대는 바로 카드를 냅니다. (2인 대전은 한 턴 안에서 두 사람이 번갈아 냄)
+- 온라인 대전의 재접속: 창을 닫거나 연결이 끊기면 그 판은 끝납니다(이어하기 없음). 방 코드로 친구와 붙는 기능도 없고, 먼저 기다리던 사람과 자동으로 붙습니다.
 - Wall, Ranged 외 키워드 효과(Charge, Swarm, Rally, Last Stand 등)는 설명만 표시됩니다. (장비·전술 효과는 동작함)

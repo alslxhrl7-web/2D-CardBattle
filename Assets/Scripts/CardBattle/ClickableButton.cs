@@ -38,6 +38,7 @@ namespace CardBattle
         protected virtual void OnMouseUp()
         {
             SetColor(Colors.hover);
+            GameAudio.Play(GameAudio.Click);
             OnClick();
         }
 

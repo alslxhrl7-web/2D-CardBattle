@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 842e544b1b54b3a4dab95082bcc02a09, type: 3}
+  m_Name: Tutorial_Qing
+  m_EditorClassIdentifier: Assembly-CSharp::CardBattle.DeckData
+  deckName: "\uD29C\uD1A0\uB9AC\uC5BC \uCCAD"
+  faction: 1
+  entries:
+  - card: {fileID: 11400000, guid: 9dc48b9e77cf06941bf475bcfe980479, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: 1ab98aeba9c2fb44dbd9a8bf4244ea34, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: 9dc48b9e77cf06941bf475bcfe980479, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: ab6bdc02230c6c747a674d118cc5056c, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: 9ae1385081e72bb4682f0ffc89eaa8e6, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: 7b95fc9b9f6351b4e92b746ecf38c19e, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: 9dc48b9e77cf06941bf475bcfe980479, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: ee134cc9d699b9b4d8545a31fdd14bfb, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: ab6bdc02230c6c747a674d118cc5056c, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: 1ab98aeba9c2fb44dbd9a8bf4244ea34, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: 9ae1385081e72bb4682f0ffc89eaa8e6, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: 9dc48b9e77cf06941bf475bcfe980479, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: ee134cc9d699b9b4d8545a31fdd14bfb, type: 2}
+    count: 1
+  - card: {fileID: 11400000, guid: c7a1261811797c7459b1a97a3392f709, type: 2}
+    count: 1

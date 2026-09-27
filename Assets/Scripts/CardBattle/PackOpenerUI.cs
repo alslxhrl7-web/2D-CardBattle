@@ -44,6 +44,7 @@ namespace CardBattle
             ClearReveal();
             if (panelRoot != null) panelRoot.SetActive(true); // 먼저 켜야 카드 이동 등이 정상 동작
 
+            GameAudio.Play(GameAudio.PackOpen);
             var drawn = CardPackOpener.Open(pack);  // 카드 뽑기
             float mid = (drawn.Count - 1) / 2f;     // 가운데 정렬 기준
             for (int i = 0; i < drawn.Count; i++)

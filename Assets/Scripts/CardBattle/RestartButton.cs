@@ -11,10 +11,10 @@ namespace CardBattle
         /// <summary>눈에 덜 띄는 회청색 버튼 (턴 종료 버튼과 헷갈리지 않게).</summary>
         protected override ButtonColors Colors { get { return GamePalette.NeutralButton; } }
 
-        /// <summary>클릭 시: 새 판 시작.</summary>
+        /// <summary>클릭 시: 새 판 시작 (배경음도 처음부터).</summary>
         protected override void OnClick()
         {
-            if (manager != null) manager.ResetGame();
+            if (manager != null) manager.StartBattle();
         }
     }
 }

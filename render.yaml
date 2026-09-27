@@ -1,0 +1,9 @@
+# Render(https://render.com) 무료 서버 설정 — New → Blueprint로 이 저장소를 고르면 대전 서버가 만들어진다
+services:
+  - type: web
+    name: sanseong-battle-server
+    runtime: node
+    plan: free
+    rootDir: Server
+    buildCommand: npm install
+    startCommand: node server.js

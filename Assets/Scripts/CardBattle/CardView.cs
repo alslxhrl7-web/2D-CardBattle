@@ -79,6 +79,13 @@ namespace CardBattle
 
         List<Renderer> layerRenderers;   // 이 카드의 모든 렌더러 (처음 한 번 수집)
         List<int> layerRelativeOrders;   // 각 렌더러의 원래 그리기 순서
+        int layerBase;                   // 마지막으로 받은 정렬 구간 (SetLayerBase)
+
+        SpriteRenderer backCover;        // 뒷면 덮개. 2인 대전에서 차례가 아닌 쪽 손패를 가린다 (필요할 때 만든다)
+        static readonly Vector2 CardSize = new Vector2(1.35f, 2.05f); // 카드 한 장 크기 (월드 유닛)
+
+        /// <summary>지금 뒷면으로 덮여 있는지.</summary>
+        public bool IsFaceDown { get { return backCover != null && backCover.gameObject.activeSelf; } }
 
         /// <summary>CardData의 내용을 이 카드의 모든 표시 요소에 반영하고, 실시간 체력을 최대치로 초기화한다.</summary>
         public void Setup(CardData d)
@@ -129,6 +136,7 @@ namespace CardBattle
         /// </summary>
         public void SetLayerBase(int baseIndex)
         {
+            layerBase = baseIndex;
             CaptureLayerOrders();
             for (int i = 0; i < layerRenderers.Count; i++)
             {
@@ -288,6 +296,38 @@ namespace CardBattle
                 case Rarity.Elite:     return "ELITE";
                 default:               return ""; // 일반 카드는 리본 자체를 숨김
             }
+        }
+
+        /// <summary>카드를 뒷면으로 덮거나(true) 다시 앞면을 보인다(false).</summary>
+        public void SetFaceDown(bool faceDown)
+        {
+            if (backCover == null)
+            {
+                if (!faceDown) return; // 덮은 적이 없으면 할 일 없음
+                backCover = CreateBackCover();
+            }
+            backCover.gameObject.SetActive(faceDown);
+        }
+
+        /// <summary>카드 크기의 뒷면 그림을 카드 맨 위에 만든다. (덱 더미와 같은 그림)</summary>
+        SpriteRenderer CreateBackCover()
+        {
+            var go = new GameObject("BackCover");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0f, 0f, -0.05f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            var back = Resources.Load<Sprite>(DeckPile.BackResourcePath);
+            sr.sprite = back != null ? back : HudFactory.WhiteSprite();
+            Vector2 native = sr.sprite.bounds.size;
+            go.transform.localScale = new Vector3(CardSize.x / native.x, CardSize.y / native.y, 1f);
+
+            // 카드 안에서 가장 위에 그려지도록 정렬 목록에 넣는다
+            CaptureLayerOrders();
+            layerRenderers.Add(sr);
+            layerRelativeOrders.Add(SortingOrdersPerCard - 1);
+            sr.sortingOrder = layerBase * SortingOrdersPerCard + SortingOrdersPerCard - 1;
+            return sr;
         }
 
         /// <summary>카드를 구성하는 모든 렌더러와 원래 그리기 순서를 처음 한 번만 기억해둔다.</summary>
