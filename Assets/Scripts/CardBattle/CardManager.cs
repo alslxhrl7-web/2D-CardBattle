@@ -20,12 +20,12 @@ namespace CardBattle
     /// 플레이어/상대가 똑같이 하는 일은 Side(Player/Enemy)를 받는 함수 하나로 처리한다.
     ///
     /// 게임 방식(mode):
-    ///   VsAI      : 청은 AI(EnemyAI)가 턴 시작 때 바로 둔다
-    ///   TwoPlayer : 한 컴퓨터에서 두 사람이 번갈아 둔다. 차례가 바뀔 때 가림막(TurnCurtain)이 뜨고,
-    ///               차례가 아닌 쪽 손패는 뒷면으로 덮인다. 먼저 두는 편은 턴마다 바뀐다(홀수 턴 조선, 짝수 턴 청)
+    ///   VsAI      : 고른 진영으로 싸우고 반대 진영은 AI(EnemyAI)가 턴 시작 때 바로 둔다
     ///   Tutorial  : 섞지 않은 튜토리얼 덱 + 청 AI. TutorialGuide가 단계마다 안내하고 시킨 행동만 허락한다
-    ///   Online    : 서버(Server/server.js)로 다른 컴퓨터의 사람과 대전. 각자 화면 아래쪽이 나. 차례 규칙은 2인 대전과 같고,
-    ///               내 행동은 OnlineMatch가 상대에게 보내고, 상대 행동은 OnlineMatch가 받아서 위쪽 편으로 똑같이 둔다
+    ///   Online    : 서버(Server/server.js)로 모르는 사람과 자동 매칭
+    ///   TwoPlayer : 방을 만들어(방 번호) 친구와 대전. 서버·규칙은 온라인과 같고 상대를 번호로 찾는 것만 다르다
+    ///   두 온라인 방식 모두 진영을 고르고, 각자 화면 아래쪽이 나. 한 턴 안에서 번갈아 두며(먼저 두는 편은 턴마다 바뀜),
+    ///   내 행동은 OnlineMatch가 상대에게 보내고, 상대 행동은 OnlineMatch가 받아서 위쪽 편으로 똑같이 둔다
     /// </summary>
     public class CardManager : MonoBehaviour
     {
@@ -86,7 +86,7 @@ namespace CardBattle
         static readonly Vector3 PlayerHeroPos = new Vector3(-9.7f, -3.1f, 0f); // 내 장수 판 (왼쪽 아래)
         static readonly Vector3 EnemyHeroPos = new Vector3(-9.7f, 3.1f, 0f);   // 상대 장수 판 (왼쪽 위)
         const int HeroSortingOrder = 10;         // 장수 판 그리기 순서
-        const int HeroSelectSortingOrder = 32500; // 고르기 화면 (카드·안내판보다 위)
+        const int ChoiceSortingOrder = 32500;   // 고르기 화면 (카드·안내판보다 위)
 
         [Header("현재 상태 (확인용 — 게임 시작 시 초기화됨)")]
         public int turnNumber = 1;                        // 현재 턴 번호
@@ -119,10 +119,12 @@ namespace CardBattle
         Side activeSide = Side.Player; // 번갈아 두는 방식(2인·온라인)에서 지금 카드를 내는 편 (다른 방식에서는 항상 Player)
         int localSeat;                 // 내 자리: 0 = 조선(홀수 턴 먼저), 1 = 청. 온라인에서 청으로 매칭되면 1
         TutorialGuide tutorial;        // 튜토리얼 진행 (튜토리얼이 아니면 null)
-        TurnCurtain curtain;           // 2인 대전 차례 가림막 (처음 쓸 때 만든다)
         TextMesh infoText;             // 오른쪽 안내판 (튜토리얼·2인 대전에서만, 처음 쓸 때 만든다)
         HeroBadge playerHero, enemyHero; // 배틀 화면 왼쪽 장수 판 = 영웅 능력 버튼 (처음 쓸 때 만든다)
-        GameObject heroSelect;         // AI 대전 시작 때 진영 고르기 화면 (처음 쓸 때 만든다)
+        GameObject choicePanel;        // 고르기 화면: 진영 고르기, 방 만들기/참가 (처음 쓸 때 만든다)
+        TextMesh choiceTitle;          // 고르기 화면 제목 (방 번호 입력 중에는 입력한 번호도 여기에)
+        HeroBadge choiceLeft, choiceRight; // 고르기 화면의 두 판
+        RoomCodeInput codeInput;       // 방 번호 키보드 입력
         bool playerPowerUsed, enemyPowerUsed; // 이번 턴에 영웅 능력을 썼는지
 
         /// <summary>전투 연출 중이라 조작을 받지 않는 상태인지.</summary>
@@ -182,9 +184,9 @@ namespace CardBattle
             ResetState();
 
             // 2) 드로우 더미를 만들고 시작 손패를 번갈아 뽑는다
-            if (mode == GameMode.Online)
+            if (TakesTurns)
             {
-                // 온라인: 양쪽이 섞어서 주고받은 더미를 그대로 쓴다 (그래야 두 컴퓨터의 게임이 똑같이 흘러간다)
+                // 온라인·2인 대전: 양쪽이 섞어서 주고받은 더미를 그대로 쓴다 (그래야 두 컴퓨터의 게임이 똑같이 흘러간다)
                 localSeat = online.LocalSeat;
                 playerDrawPile = new List<CardData>(online.MyPile);
                 enemyDrawPile = new List<CardData>(online.OpponentPile);
@@ -215,8 +217,7 @@ namespace CardBattle
             CombatAnimation.ClearPopups();
             CardHoverPreview.Hide();
             busy = false;
-            if (curtain != null) curtain.Hide();
-            if (heroSelect != null) heroSelect.SetActive(false);
+            if (choicePanel != null) choicePanel.SetActive(false);
 
             ClearHand(playerHand);
             ClearHand(enemyHand);
@@ -253,18 +254,20 @@ namespace CardBattle
             else PlayEnemyCards();
         }
 
-        /// <summary>한 턴 안에서 두 편이 번갈아 두는 방식인지 (2인 대전, 온라인 대전).</summary>
+        /// <summary>서버로 사람끼리 두는 방식인지 (온라인 자동 매칭, 2인 대전 방). 한 턴 안에서 두 편이 번갈아 둔다.</summary>
         bool TakesTurns { get { return mode == GameMode.TwoPlayer || mode == GameMode.Online; } }
 
         /// <summary>
         /// 배틀 화면에서 새 판을 시작한다(배틀 시작·다시 시작 버튼). ResetGame()에 소리만 더한 것:
         /// 덱 섞는 소리 + 배틀 배경음. (Play 직후 Start()의 ResetGame은 처음 화면 뒤에서 조용히 준비만 한다)
         /// </summary>
-        /// chooseFaction = true(처음 화면에서 들어올 때)면 AI 대전은 먼저 진영 고르기 화면을 띄운다. 다시 시작은 고른 진영 그대로.
+        /// chooseFaction = true(처음 화면에서 들어올 때)면 먼저 진영 고르기 화면을 띄운다(튜토리얼 제외). 다시 시작은 고른 진영 그대로.
+        /// 온라인은 상대 찾기, 2인 대전은 방 만들기/참가 화면으로 간다.
         public void StartBattle(bool chooseFaction = false)
         {
-            if (mode == GameMode.Online) { WaitForOpponent(); return; }
-            if (mode == GameMode.VsAI && chooseFaction) { ShowHeroSelect(); return; }
+            if (chooseFaction && mode != GameMode.Tutorial) { ShowHeroSelect(); return; }
+            if (mode == GameMode.Online) { WaitForOpponent(OnlineMatch.FindCommand); return; }
+            if (mode == GameMode.TwoPlayer) { ShowRoomChoice(); return; }
             ResetGame();
             GameAudio.Play(GameAudio.Shuffle);
             if (!gameOver) GameAudio.StartAmbience(); // 시작하자마자 끝났으면 배경음은 켜지 않는다
@@ -277,9 +280,9 @@ namespace CardBattle
         /// </summary>
         public void EndTurn()
         {
-            if (gameOver || busy || IsCurtainShown) return; // 이미 끝났거나 연출 중이거나 가림막이 떠 있으면 무시
+            if (gameOver || busy) return; // 이미 끝났거나 연출 중이면 무시
 
-            if (mode == GameMode.Online)
+            if (TakesTurns)
             {
                 if (!online.InGame || activeSide != Side.Player) return; // 상대 차례에는 못 누른다
                 online.SendEndTurn();
@@ -334,7 +337,6 @@ namespace CardBattle
         IEnumerator CombatWithAnimation(LaneCombat.Result plan)
         {
             busy = true;
-            RefreshHandFaces(); // 2인 대전: 전투를 보는 동안에는 양쪽 손패를 덮어 둔다
             yield return StartCoroutine(CombatAnimation.PlayAttacks(this, plan, HeroPoint(Side.Player), HeroPoint(Side.Enemy), manaText));
             LaneCombat.ApplyDamage(plan);                              // 이제 실제로 피해 적용 (체력 숫자 갱신)
             yield return StartCoroutine(CombatAnimation.PlayDeaths(WithEquipment(plan.deadUnits))); // 죽은 카드(+ 뒤의 장비)가 사라지는 연출
@@ -391,7 +393,7 @@ namespace CardBattle
             if (!gameOver) BeginTurn();
         }
 
-        // ================= 2인 대전 (한 컴퓨터에서 번갈아) =================
+        // ================= 온라인 · 2인 대전 차례 =================
 
         /// <summary>
         /// 이번 턴에 먼저 두는 편. 한쪽만 늘 먼저 두면 불공평해서 턴마다 바꾼다 (홀수 턴은 자리 0 = 조선, 짝수 턴은 자리 1 = 청).
@@ -403,67 +405,34 @@ namespace CardBattle
             return firstSeat == localSeat ? Side.Player : Side.Enemy;
         }
 
-        /// <summary>차례를 side에게 넘긴다. 2인 대전: 양쪽 손패를 덮고 가림막을 띄운다(클릭하면 OnCurtainClosed).</summary>
+        /// <summary>차례를 side에게 넘긴다.</summary>
         void PassTurnTo(Side side)
         {
             activeSide = side;
             CardHoverPreview.Hide(); // 앞 사람 카드의 확대 미리보기가 남지 않게
-            if (mode == GameMode.TwoPlayer) Curtain.Show(string.Format(GameTexts.CurtainTurn, SideName(side))); // 온라인은 각자 화면이라 가림막 없음
-            RefreshHandFaces();
             RefreshInfoPanel();
         }
 
-        /// <summary>가림막이 걷혔을 때(TurnCurtain이 부른다): 차례인 쪽 손패만 앞면으로.</summary>
-        public void OnCurtainClosed()
-        {
-            RefreshHandFaces();
-        }
-
-        /// <summary>가림막이 화면을 덮고 있는지.</summary>
-        bool IsCurtainShown { get { return curtain != null && curtain.IsShown; } }
-
-        /// <summary>가림막 (처음 쓸 때 배틀 화면 아래에 만든다 → 처음 화면으로 가면 같이 숨는다).</summary>
-        TurnCurtain Curtain
-        {
-            get
-            {
-                if (curtain == null) curtain = TurnCurtain.Create(this, manaText, BattleRoot());
-                return curtain;
-            }
-        }
-
-        /// <summary>이 편의 손패를 뒷면으로 가려야 하는지. 2인 대전: 가림막이 떠 있거나, 전투 연출 중이거나, 차례가 아닐 때.</summary>
+        /// <summary>이 편의 손패를 뒷면으로 가려야 하는지: 사람끼리 두는 방식에서 상대(위쪽) 손패.</summary>
         bool IsHandHidden(Side side)
         {
-            if (mode == GameMode.Online) return side == Side.Enemy; // 온라인: 상대 손패는 항상 뒷면
-            return mode == GameMode.TwoPlayer && (IsCurtainShown || busy || side != activeSide);
-        }
-
-        /// <summary>양쪽 손패 카드를 IsHandHidden에 맞춰 앞면/뒷면으로 바꾼다.</summary>
-        void RefreshHandFaces()
-        {
-            foreach (var side in new[] { Side.Player, Side.Enemy })
-                foreach (var card in HandOf(side).cards)
-                    card.GetComponent<CardView>().SetFaceDown(IsHandHidden(side));
-        }
-
-        /// <summary>편 이름 ("조선" / "청").</summary>
-        static string SideName(Side side)
-        {
-            return side == Side.Player ? GameTexts.JoseonName : GameTexts.QingName;
+            return TakesTurns && side == Side.Enemy;
         }
 
         // ================= 온라인 대전 =================
 
-        /// <summary>온라인 대전: 보드를 비우고 서버에 접속해 상대를 찾는다. 상대가 정해지면 OnlineMatch가 BeginOnlineGame을 부른다.</summary>
-        void WaitForOpponent()
+        /// <summary>
+        /// 보드를 비우고 서버에 접속해 상대를 기다린다. 상대가 정해지면 OnlineMatch가 BeginOnlineGame을 부른다.
+        /// command = 서버에 보낼 첫 말: find(자동 매칭) / create(방 만들기) / join|번호(방 참가).
+        /// </summary>
+        void WaitForOpponent(string command)
         {
             ClearBoard();
             ResetState();
             playerDrawPile.Clear();
             enemyDrawPile.Clear();
             GameAudio.StopAmbience();
-            online.FindMatch();
+            online.FindMatch(command);
             RefreshAllDisplays();
         }
 
@@ -507,11 +476,10 @@ namespace CardBattle
         /// <summary>지금 안내판에 띄울 문구. AI 대전이거나 게임이 끝났으면 null(숨김).</summary>
         string InfoMessage()
         {
-            if (mode == GameMode.Online && online.Status != null) return online.Status; // 접속 중·상대 기다리는 중·접속 실패
+            if (TakesTurns && online.Status != null) return online.Status; // 접속 중·상대 기다리는 중·방 번호·접속 실패
             if (gameOver) return null;
             if (tutorial != null) return tutorial.Message;
-            if (mode == GameMode.TwoPlayer) return string.Format(GameTexts.TurnInfo, SideName(activeSide));
-            if (mode == GameMode.Online) return activeSide == Side.Player ? GameTexts.OnlineMyTurn : GameTexts.OnlineTheirTurn;
+            if (TakesTurns) return activeSide == Side.Player ? GameTexts.OnlineMyTurn : GameTexts.OnlineTheirTurn;
             return null;
         }
 
@@ -715,7 +683,7 @@ namespace CardBattle
             if (view == null || view.data == null || fromHand == null) return false;
 
             Side side = SideOf(fromHand);
-            if (TakesTurns && (side != activeSide || IsCurtainShown)) return false; // 차례가 아닌 편
+            if (TakesTurns && side != activeSide) return false; // 차례가 아닌 편
             if (tutorial != null && side == Side.Player && !tutorial.AllowsCard(view.data)) return false; // 튜토리얼: 시킨 카드만
             return CanPlayMoreThisTurn(side);
         }
@@ -752,7 +720,7 @@ namespace CardBattle
         /// <summary>온라인 대전에서 내(아래쪽)가 한 행동인지 = 상대에게 보내야 하는지.</summary>
         bool IsMyOnlineMove(Side side)
         {
-            return mode == GameMode.Online && side == Side.Player;
+            return TakesTurns && side == Side.Player;
         }
 
         /// <summary>필드 칸의 레인 번호 (왼쪽부터 0).</summary>
@@ -813,8 +781,7 @@ namespace CardBattle
         /// </summary>
         public bool CanControlHand(HandZone hand)
         {
-            if (mode == GameMode.TwoPlayer) return !IsCurtainShown && hand == HandOf(activeSide);
-            if (mode == GameMode.Online) return hand == playerHand && activeSide == Side.Player;
+            if (TakesTurns) return hand == playerHand && activeSide == Side.Player;
             return hand == playerHand;
         }
 
@@ -855,7 +822,7 @@ namespace CardBattle
 
             hand.AddCard(view.transform);
             view.ShowCost(CostOf(SideOf(hand), data));    // Swarm 할인이 있으면 줄어든 비용으로 표시
-            view.SetFaceDown(IsHandHidden(SideOf(hand))); // 2인 대전에서 차례가 아닌 쪽이 뽑은 카드는 뒷면
+            view.SetFaceDown(IsHandHidden(SideOf(hand))); // 온라인 상대가 뽑은 카드는 뒷면
             var drag = view.GetComponent<CardDragHandler>();
             if (drag != null) drag.Init(this, hand); // 이 카드를 드래그해서 낼 수 있게 연결
             return view;
@@ -936,17 +903,20 @@ namespace CardBattle
 
         // ================= 장수 · 영웅 능력 =================
 
-        /// <summary>이 편의 진영. 온라인은 자리(0 = 조선), AI 대전은 고른 진영, 2인 대전·튜토리얼은 아래쪽이 조선.</summary>
+        /// <summary>
+        /// 이 편의 진영. 나 = 고른 진영(튜토리얼은 조선). 상대 = 온라인·2인 대전은 상대가 고른 진영(같은 진영끼리도 가능),
+        /// AI 대전은 내 반대 진영.
+        /// </summary>
         public Faction FactionOf(Side side)
         {
-            Faction mine = mode == GameMode.Online ? (localSeat == 0 ? Faction.Joseon : Faction.Qing)
-                         : mode == GameMode.VsAI ? playerFaction : Faction.Joseon;
+            Faction mine = mode == GameMode.Tutorial ? Faction.Joseon : playerFaction;
             if (side == Side.Player) return mine;
+            if (TakesTurns && online != null && online.InGame) return online.OpponentFaction;
             return mine == Faction.Qing ? Faction.Joseon : Faction.Qing;
         }
 
-        /// <summary>진영의 덱 (조선 = playerDeckData, 청 = enemyDeckData).</summary>
-        DeckData DeckOf(Faction faction) { return faction == Faction.Qing ? enemyDeckData : playerDeckData; }
+        /// <summary>진영의 덱 (조선 = playerDeckData, 청 = enemyDeckData). 온라인에서 내 덱을 보낼 때도 쓴다.</summary>
+        public DeckData DeckOf(Faction faction) { return faction == Faction.Qing ? enemyDeckData : playerDeckData; }
         /// <summary>진영의 장수 카드.</summary>
         CardData HeroOf(Faction faction) { return faction == Faction.Qing ? qingHero : joseonHero; }
 
@@ -973,7 +943,7 @@ namespace CardBattle
         /// <summary>지금 이 편이 영웅 능력을 쓸 수 있는지 (차례·군력·이번 턴 사용 여부·대상).</summary>
         bool CanUseHeroPower(Side side)
         {
-            if (gameOver || busy || IsCurtainShown || (side == Side.Player ? playerPowerUsed : enemyPowerUsed)) return false;
+            if (gameOver || busy || (side == Side.Player ? playerPowerUsed : enemyPowerUsed)) return false;
             if (TakesTurns && side != activeSide) return false;
             if (tutorial != null && !tutorial.IsFreePlay) return false; // 튜토리얼은 실전 단계부터
             return ManaOf(side).current >= GameRules.HeroPowerCost(FactionOf(side)) && HeroPowerTarget(side) != null;
@@ -1021,40 +991,84 @@ namespace CardBattle
             return badge;
         }
 
-        /// <summary>AI 대전 시작 전: 보드를 비우고 인조/홍타이지 중 하나를 고르는 화면을 띄운다. 고르면 그 진영으로 새 판.</summary>
+        /// <summary>배틀 시작 전: 보드를 비우고 인조/홍타이지 중 하나를 고르는 화면을 띄운다. 고르면 그 진영으로 StartBattle.</summary>
         void ShowHeroSelect()
+        {
+            OpenChoice(GameTexts.ChooseFaction);
+            foreach (var faction in new[] { Faction.Joseon, Faction.Qing })
+            {
+                var f = faction;
+                var badge = f == Faction.Joseon ? choiceLeft : choiceRight;
+                badge.Show(HeroOf(f), GameTexts.HeroTitle(f, HeroOf(f)), GameTexts.HeroPower(f));
+                badge.onClick = () => { playerFaction = f; StartBattle(); };
+            }
+        }
+
+        /// <summary>2인 대전: 방 만들기 / 방 참가 고르기.</summary>
+        void ShowRoomChoice()
+        {
+            OpenChoice(GameTexts.RoomChoose);
+            choiceLeft.Show(null, GameTexts.RoomCreate, GameTexts.RoomCreateHelp);
+            choiceLeft.onClick = () => WaitForOpponent(OnlineMatch.CreateCommand);
+            choiceRight.Show(null, GameTexts.RoomJoin, GameTexts.RoomJoinHelp);
+            choiceRight.onClick = ShowRoomCodeInput;
+        }
+
+        /// <summary>방 참가: 번호 4자리를 키보드로 받는다. 다 넣으면 그 방에 들어간다.</summary>
+        void ShowRoomCodeInput()
+        {
+            OpenChoice(GameTexts.RoomCodeInput);
+            choiceLeft.gameObject.SetActive(false);
+            choiceRight.gameObject.SetActive(false);
+            codeInput.Begin(code => WaitForOpponent(OnlineMatch.JoinCommand(code)));
+        }
+
+        /// <summary>
+        /// 고르기 화면(어두운 배경 + 제목 + 판 두 개)을 띄운다(처음이면 만든다). 보드는 비우고, 고르는 동안 턴 종료·카드 내기를 막는다.
+        /// 진영 고르기와 방 만들기/참가가 같은 화면을 쓴다.
+        /// </summary>
+        void OpenChoice(string title)
         {
             ClearBoard();
             ResetState(); // 승패 배너 숨기기 등 (배틀 화면을 켜면 배너 오브젝트도 같이 켜지므로)
+            if (online != null) online.Leave();
             playerDrawPile.Clear();
             enemyDrawPile.Clear();
             RefreshAllDisplays();
             GameAudio.StopAmbience();
-            busy = true; // 고르는 동안 턴 종료·카드 내기 막기
-            if (heroSelect == null)
+            busy = true;
+            if (choicePanel == null)
             {
-                heroSelect = new GameObject("HeroSelect");
-                heroSelect.transform.SetParent(BattleRoot(), false);
-                heroSelect.transform.position = new Vector3(0f, 0f, -5f);
-                HudFactory.EnsureBackdrop(heroSelect.transform, "Backdrop", new Vector2(40f, 25f), GamePalette.CurtainButton.normal, HeroSelectSortingOrder);
-                var title = HudFactory.CreateLabel(manaText, "Title", new Vector3(0f, 3.4f, -5.1f));
-                title.transform.SetParent(heroSelect.transform, true);
-                UnityUtil.SetTextHeight(title, 0.55f, true);
-                title.anchor = TextAnchor.MiddleCenter;
-                title.color = GamePalette.InfoText;
-                title.text = GameTexts.ChooseFaction;
-                title.GetComponent<MeshRenderer>().sortingOrder = HeroSelectSortingOrder + 1;
-                foreach (var faction in new[] { Faction.Joseon, Faction.Qing })
-                {
-                    var f = faction;
-                    var badge = HeroBadge.Create(f + "Choice", new Vector3(f == Faction.Joseon ? -2.6f : 2.6f, 0f, -5.1f), heroSelect.transform, manaText, HeroSelectSortingOrder + 2);
-                    badge.Show(HeroOf(f), GameTexts.HeroTitle(f, HeroOf(f)), GameTexts.HeroPower(f));
-                    badge.transform.localScale = Vector3.one * 1.5f; // 고르기 화면에서는 크게
-                    badge.onClick = () => { playerFaction = f; StartBattle(); };
-                }
+                choicePanel = new GameObject("ChoicePanel");
+                choicePanel.transform.SetParent(BattleRoot(), false);
+                choicePanel.transform.position = new Vector3(0f, 0f, -5f);
+                HudFactory.EnsureBackdrop(choicePanel.transform, "Backdrop", new Vector2(40f, 25f), GamePalette.CurtainButton.normal, ChoiceSortingOrder);
+                choiceTitle = HudFactory.CreateLabel(manaText, "Title", new Vector3(0f, 3.4f, -5.1f));
+                choiceTitle.transform.SetParent(choicePanel.transform, true);
+                UnityUtil.SetTextHeight(choiceTitle, 0.55f, true);
+                choiceTitle.anchor = TextAnchor.MiddleCenter;
+                choiceTitle.alignment = TextAlignment.Center;
+                choiceTitle.color = GamePalette.InfoText;
+                choiceTitle.GetComponent<MeshRenderer>().sortingOrder = ChoiceSortingOrder + 1;
+                choiceLeft = CreateChoiceBadge("LeftChoice", -2.6f);
+                choiceRight = CreateChoiceBadge("RightChoice", 2.6f);
+                codeInput = choicePanel.AddComponent<RoomCodeInput>();
+                codeInput.display = choiceTitle;
             }
-            heroSelect.SetActive(true);
+            choiceTitle.text = title;
+            codeInput.enabled = false;
+            choiceLeft.gameObject.SetActive(true);
+            choiceRight.gameObject.SetActive(true);
+            choicePanel.SetActive(true);
             RefreshInfoPanel();
+        }
+
+        /// <summary>고르기 화면의 판 하나 (크게).</summary>
+        HeroBadge CreateChoiceBadge(string name, float x)
+        {
+            var badge = HeroBadge.Create(name, new Vector3(x, 0f, -5.1f), choicePanel.transform, manaText, ChoiceSortingOrder + 2);
+            badge.transform.localScale = Vector3.one * 1.5f;
+            return badge;
         }
 
         // ================= 전투 / 체력 / 승패 =================
@@ -1100,15 +1114,6 @@ namespace CardBattle
                 SetGameOver(true, GameTexts.Draw, GamePalette.ResultDraw, GameTexts.ReasonBoth);
                 GameAudio.Play(GameAudio.Draw);
             }
-            else if (mode == GameMode.TwoPlayer)
-            {
-                // 2인 대전: "조선 승리!" / "청 승리!" — 둘 중 누군가는 이겼으니 승리 소리
-                Side loser = playerLost ? Side.Player : Side.Enemy;
-                string reason = HealthOf(loser) <= 0 ? GameTexts.ReasonSideHealth : GameTexts.ReasonSideDeck;
-                SetGameOver(true, string.Format(GameTexts.SideWins, SideName(loser.Opponent())), GamePalette.ResultVictory,
-                            string.Format(reason, SideName(loser)));
-                GameAudio.Play(GameAudio.Victory);
-            }
             else if (playerLost)
             {
                 SetGameOver(true, GameTexts.Defeat, GamePalette.ResultDefeat, playerHealth <= 0 ? GameTexts.ReasonMyHealth : GameTexts.ReasonMyDeck);
@@ -1149,9 +1154,8 @@ namespace CardBattle
         /// <summary>양쪽 군력 표시를 갱신한다.</summary>
         void RefreshManaDisplay()
         {
-            bool twoPlayer = mode == GameMode.TwoPlayer; // 2인 대전은 "적" 대신 편 이름으로
-            UnityUtil.SetText(manaText, string.Format(twoPlayer ? GameTexts.PlayerManaTwoPlayer : GameTexts.PlayerMana, playerMana.current, playerMana.max, turnNumber));
-            UnityUtil.SetText(enemyManaText, string.Format(twoPlayer ? GameTexts.EnemyManaTwoPlayer : GameTexts.EnemyMana, enemyMana.current, enemyMana.max));
+            UnityUtil.SetText(manaText, string.Format(GameTexts.PlayerMana, playerMana.current, playerMana.max, turnNumber));
+            UnityUtil.SetText(enemyManaText, string.Format(GameTexts.EnemyMana, enemyMana.current, enemyMana.max));
         }
 
         /// <summary>양쪽 남은 덱 장수 표시를 갱신한다.</summary>
@@ -1164,9 +1168,8 @@ namespace CardBattle
         /// <summary>양쪽 히어로 체력 표시를 갱신한다.</summary>
         void RefreshHealthDisplay()
         {
-            bool twoPlayer = mode == GameMode.TwoPlayer;
-            UnityUtil.SetText(playerHealthText, string.Format(twoPlayer ? GameTexts.PlayerHealthTwoPlayer : GameTexts.PlayerHealth, playerHealth, GameRules.StartingHealth));
-            UnityUtil.SetText(enemyHealthText, string.Format(twoPlayer ? GameTexts.EnemyHealthTwoPlayer : GameTexts.EnemyHealth, enemyHealth, GameRules.StartingHealth));
+            UnityUtil.SetText(playerHealthText, string.Format(GameTexts.PlayerHealth, playerHealth, GameRules.StartingHealth));
+            UnityUtil.SetText(enemyHealthText, string.Format(GameTexts.EnemyHealth, enemyHealth, GameRules.StartingHealth));
         }
 
         // ================= 편(Side)별 참조 도우미 — 플레이어/상대 분기는 이 아래에만 모아둔다 =================

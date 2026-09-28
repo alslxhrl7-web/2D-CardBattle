@@ -4,15 +4,16 @@ using System.Collections.Generic;
 namespace CardBattle
 {
     /// <summary>
-    /// 온라인 대전 담당. 서버에 접속 → 자동 매칭 → 덱 교환 → 서로의 행동(카드 내기, 턴 종료)을 주고받는다.
+    /// 온라인 대전·2인 대전(방) 담당. 서버에 접속 → 상대 찾기(자동 매칭 또는 방 번호) → 진영·덱 교환 → 서로의 행동을 주고받는다.
     /// 게임 규칙은 두 컴퓨터가 똑같이 계산하고, 서버(Server/server.js)는 메시지를 전달만 한다.
     ///
-    /// 화면: 각자 아래쪽이 나(Player), 위쪽이 상대(Enemy).
-    /// 자리: 먼저 기다리던 사람 = 자리 0 = 조선 덱(playerDeckData), 나중에 온 사람 = 자리 1 = 청 덱(enemyDeckData).
+    /// 화면: 각자 아래쪽이 나(Player), 위쪽이 상대(Enemy). 진영은 각자 고른 것(같은 진영끼리도 됨), 덱은 그 진영의 내 덱.
+    /// 자리: 먼저 기다리던 사람(방을 만든 사람) = 자리 0 = 홀수 턴에 먼저 둔다, 나중 사람 = 자리 1.
     ///
     /// 메시지는 글자 한 줄이고 | 로 나눈다.
-    ///   서버 → 나   : wait (기다리는 중) / match|자리 / left (상대가 나감)
-    ///   나 ↔ 상대  : deck|카드,카드,…(뽑는 순서) / place|손패번호|레인 / equip|손패번호|레인 / spell|손패번호 / power(영웅 능력) / end
+    ///   나 → 서버   : 접속하자마자 find(자동 매칭) / create(방 만들기) / join|방번호(방 참가)
+    ///   서버 → 나   : wait (기다리는 중) / room|방번호 (방을 만듦) / noroom (그런 방 없음) / match|자리 / left (상대가 나감)
+    ///   나 ↔ 상대  : deck|진영번호|카드,카드,…(뽑는 순서) / place|손패번호|레인 / equip|손패번호|레인 / spell|손패번호 / power(영웅 능력) / end
     /// 상대가 보낸 행동은 상대 쪽(위쪽) 손패·필드에 똑같이 적용한다.
     /// </summary>
     public class OnlineMatch : MonoBehaviour
@@ -26,7 +27,13 @@ namespace CardBattle
         [Tooltip("상대 덱을 카드 이름으로 받아서 찾을 때 쓰는 전체 카드 목록 (메뉴 '새 카드·덱·덱 더미 적용'이 채운다)")]
         public List<CardData> cardLibrary = new List<CardData>();
 
+        public const string FindCommand = "find";     // 자동 매칭
+        public const string CreateCommand = "create"; // 방 만들기
+        /// <summary>방 참가 명령.</summary>
+        public static string JoinCommand(string room) { return "join|" + room; }
+
         OnlineSocket socket;                                            // 서버 연결 (없으면 null)
+        string firstCommand;                                            // 연결되면 서버에 보낼 첫 말 (보냈으면 null)
         readonly Queue<string[]> opponentMoves = new Queue<string[]>(); // 받은 상대 행동 (전투 연출이 끝나면 차례로 적용)
 
         /// <summary>내 자리 (0 = 조선, 1 = 청).</summary>
@@ -35,15 +42,18 @@ namespace CardBattle
         public List<CardData> MyPile { get; private set; }
         /// <summary>상대 드로우 더미 (상대가 보내 준 순서).</summary>
         public List<CardData> OpponentPile { get; private set; }
+        /// <summary>상대가 고른 진영.</summary>
+        public Faction OpponentFaction { get; private set; }
         /// <summary>덱까지 주고받아서 게임이 진행 중인지.</summary>
         public bool InGame { get; private set; }
         /// <summary>안내판에 띄울 접속 상태 (접속 중·기다리는 중·실패). 게임 중이면 null.</summary>
         public string Status { get; private set; }
 
-        /// <summary>서버에 접속해서 상대를 찾는다. 이전 연결이 있으면 끊고 새로 시작.</summary>
-        public void FindMatch()
+        /// <summary>서버에 접속해서 상대를 찾는다(command = find / create / join|번호). 이전 연결이 있으면 끊고 새로 시작.</summary>
+        public void FindMatch(string command)
         {
             Leave();
+            firstCommand = command;
             socket = new OnlineSocket();
             socket.Connect(serverUrl);
             SetStatus(GameTexts.OnlineConnecting);
@@ -54,6 +64,7 @@ namespace CardBattle
         {
             if (socket != null) socket.Close();
             socket = null;
+            firstCommand = null;
             InGame = false;
             MyPile = null;
             OpponentPile = null;
@@ -70,6 +81,11 @@ namespace CardBattle
         /// <summary>매 프레임: 받은 메시지를 처리하고, 연결이 끊겼는지 보고, 쌓인 상대 행동을 적용한다.</summary>
         void Update()
         {
+            if (socket != null && firstCommand != null && socket.CurrentState == OnlineSocket.State.Open)
+            {
+                socket.Send(firstCommand); // 연결되자마자 무엇을 할지 서버에 알린다
+                firstCommand = null;
+            }
             string message;
             while (socket != null && (message = socket.Poll()) != null) Receive(message);
             if (socket != null && socket.CurrentState == OnlineSocket.State.Closed) ConnectionLost();
@@ -95,14 +111,22 @@ namespace CardBattle
                 case "wait":
                     SetStatus(GameTexts.OnlineWaiting);
                     break;
+                case "room":
+                    SetStatus(string.Format(GameTexts.RoomWaiting, parts[1]));
+                    break;
+                case "noroom":
+                    Leave();
+                    SetStatus(GameTexts.RoomNotFound);
+                    break;
                 case "match":
                     LocalSeat = int.Parse(parts[1]);
-                    MyPile = CardManager.BuildDeck(LocalSeat == 0 ? manager.playerDeckData : manager.enemyDeckData, true);
-                    socket.Send("deck|" + string.Join(",", MyPile.ConvertAll(card => card.name).ToArray()));
+                    MyPile = CardManager.BuildDeck(manager.DeckOf(manager.playerFaction), true); // 내가 고른 진영의 내 덱
+                    socket.Send("deck|" + (int)manager.playerFaction + "|" + string.Join(",", MyPile.ConvertAll(card => card.name).ToArray()));
                     TryStart();
                     break;
                 case "deck":
-                    OpponentPile = ParsePile(parts[1]);
+                    OpponentFaction = (Faction)int.Parse(parts[1]);
+                    OpponentPile = ParsePile(parts[2]);
                     TryStart();
                     break;
                 case "left":

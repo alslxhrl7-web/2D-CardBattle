@@ -10,6 +10,8 @@ namespace CardBattle
     {
         static readonly Vector2 Size = new Vector2(2.2f, 3.0f); // 판 크기 (월드 유닛)
         const float PortraitHeight = 1.8f;                       // 초상화 높이
+        const float NameY = -0.62f, PowerY = -1.1f;              // 이름·설명 글자 높이 위치 (그림이 없으면 NoPortraitLift만큼 올려 가운데로)
+        const float NoPortraitLift = 0.9f;
         static readonly Color PowerReady = new Color(1f, 0.85f, 0.4f);  // 영웅 능력을 쓸 수 있을 때 글자색
         static readonly Color PowerUsed = new Color(0.55f, 0.55f, 0.55f); // 못 쓸 때
 
@@ -34,18 +36,21 @@ namespace CardBattle
             badge.portrait = pic.AddComponent<SpriteRenderer>();
             badge.portrait.sortingOrder = order + 1;
 
-            badge.nameText = badge.Label(style, "Name", -0.62f, 0.26f, true, order + 2);
-            badge.powerText = badge.Label(style, "Power", -1.1f, 0.17f, false, order + 2);
+            badge.nameText = badge.Label(style, "Name", NameY, 0.26f, true, order + 2);
+            badge.powerText = badge.Label(style, "Power", PowerY, 0.17f, false, order + 2);
             return badge;
         }
 
-        /// <summary>장수 카드(그림·이름)와 영웅 능력 설명을 넣는다.</summary>
+        /// <summary>장수 카드(그림·이름)와 영웅 능력 설명을 넣는다. hero가 null이면 글자만(방 만들기·참가 버튼).</summary>
         public void Show(CardData hero, string title, string power)
         {
             nameText.text = title;
             powerText.text = power;
             portrait.sprite = hero != null ? hero.portrait : null;
             if (portrait.sprite != null) portrait.transform.localScale = Vector3.one * (PortraitHeight / portrait.sprite.bounds.size.y);
+            float lift = portrait.sprite != null ? 0f : NoPortraitLift;
+            nameText.transform.localPosition = new Vector3(0f, NameY + lift, -0.1f);
+            powerText.transform.localPosition = new Vector3(0f, PowerY + lift, -0.1f);
         }
 
         /// <summary>매 프레임: 영웅 능력을 쓸 수 있으면 글자를 밝게, 아니면 어둡게.</summary>

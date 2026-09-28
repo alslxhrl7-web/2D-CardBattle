@@ -57,7 +57,7 @@ namespace CardBattle
     public enum GameMode
     {
         VsAI,      // 배틀 시작: 청은 AI가 둔다
-        TwoPlayer, // 2인 대전: 한 컴퓨터에서 조선·청을 사람 둘이 번갈아 둔다
+        TwoPlayer, // 2인 대전: 방을 만들어 방 번호로 친구와 대전 (서버는 온라인과 같음)
         Tutorial,  // 튜토리얼: 정해진 덱으로 안내를 따라 한 판
         Online     // 온라인 대전: 서버로 다른 컴퓨터의 사람과 (OnlineMatch.cs)
     }

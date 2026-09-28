@@ -165,6 +165,8 @@ namespace CardBattle.EditorTools
         static readonly float[] TileRowsY = { 3.5f, 0.9f, -1.7f }; // 줄마다의 y 위치 (위에서 아래로)
         const float TileScale = 0.55f;       // 타일 크기 (기존 타일과 같음)
         const float PanelMinWidth = 21f;     // 덱 편집 배경판 최소 가로 폭
+        static readonly Vector3 DeckSwitchOffset = new Vector3(-5.5f, 0f, 0f); // 진영 바꾸기 버튼: 저장 버튼 왼쪽
+        const float SwitchLabelHeight = 0.5f; // 진영 바꾸기 버튼 글자 높이
 
         // ---- 덱 더미 위치 ----
         static readonly Vector3 PlayerPilePos = new Vector3(9.9f, -2.4f, 0f);  // 배틀: 내 드로우 더미 (오른쪽 아래)
@@ -365,8 +367,8 @@ namespace CardBattle.EditorTools
         // ================= 3) 덱 편집 타일 =================
 
         /// <summary>
-        /// 덱 편집 화면에 조선 카드(영웅 능력 카드 제외)의 타일만 있도록, 없는 타일은 기존 타일을 복제해 만들고
-        /// 필요 없는 타일(청 카드 등)은 지운 뒤 종류 → 비용 순서로 8칸씩 다시 배치한다. (플레이어 덱 = 조선 덱)
+        /// 덱 편집 화면에 조선·청 카드(영웅 능력 카드 제외)의 타일이 있도록, 없는 타일은 기존 타일을 복제해 만들고
+        /// 필요 없는 타일은 지운 뒤 진영마다 종류 → 비용 순서로 8칸씩 같은 자리에 배치한다(보이는 건 편집 중인 진영만).
         /// </summary>
         static void LayoutDeckBuilderTiles(List<string> log)
         {
@@ -375,12 +377,12 @@ namespace CardBattle.EditorTools
             var template = ui.tiles[0];
             var grid = template.transform.parent;
 
-            // 덱에 넣을 수 있는 카드 에셋 모으기 (조선, 영웅 능력 카드 제외)
+            // 덱에 넣을 수 있는 카드 에셋 모으기 (조선·청, 영웅 능력 카드 제외)
             var all = new List<CardData>();
             foreach (var guid in AssetDatabase.FindAssets("t:CardData"))
             {
                 var c = AssetDatabase.LoadAssetAtPath<CardData>(AssetDatabase.GUIDToAssetPath(guid));
-                if (IsDeckCard(c, Faction.Joseon)) all.Add(c);
+                if (IsDeckCard(c, Faction.Joseon) || IsDeckCard(c, Faction.Qing)) all.Add(c);
             }
             all.Sort(CompareForTiles);
 
@@ -413,11 +415,16 @@ namespace CardBattle.EditorTools
                 added++;
             }
 
-            // 순서대로 배치 + 카드 모양 갱신
+            // 진영마다 같은 자리에 순서대로 배치 + 카드 모양 갱신 (한 번에 한 진영 타일만 보인다)
             ui.tiles = new List<DeckBuilderTile>();
-            for (int i = 0; i < all.Count; i++)
+            var indexInFaction = new Dictionary<Faction, int>();
+            foreach (var card in all)
             {
-                var tile = byCard[all[i]];
+                var tile = byCard[card];
+                int i;
+                indexInFaction.TryGetValue(card.faction, out i);
+                indexInFaction[card.faction] = i + 1;
+                tile.gameObject.SetActive(card.faction == Faction.Joseon);
                 int row = i / TileColumns, col = i % TileColumns;
                 float x = (col - (TileColumns - 1) * 0.5f) * TileSpacingX;
                 float y = row < TileRowsY.Length ? TileRowsY[row] : TileRowsY[TileRowsY.Length - 1] - (row - TileRowsY.Length + 1) * 2.6f;
@@ -439,7 +446,40 @@ namespace CardBattle.EditorTools
                 bg.localScale = new Vector3(s.x * PanelMinWidth / sr.bounds.size.x, s.y, s.z);
                 EditorUtility.SetDirty(bg);
             }
+            SetupDeckFactionSwitch(ui, log);
             log.Add("덱 편집 타일 " + ui.tiles.Count + "개 (새로 " + added + "개, 지움 " + removed + "개)");
+        }
+
+        /// <summary>
+        /// 덱 편집에 청 덱을 연결하고, 저장 버튼을 복제해 "○ 덱 편집" 버튼을 저장 버튼 왼쪽에 둔다(있으면 그대로).
+        /// 패널 제목 글자("덱 편집 - …")도 연결해서 진영이 바뀌면 제목이 바뀌게 한다.
+        /// </summary>
+        static void SetupDeckFactionSwitch(DeckBuilderUI ui, List<string> log)
+        {
+            ui.qingDeck = AssetDatabase.LoadAssetAtPath<DeckData>(QingDeckPath);
+            if (ui.panelRoot != null)
+                foreach (var text in ui.panelRoot.GetComponentsInChildren<TextMesh>(true))
+                    if (text.name == "Title") { ui.titleText = text; break; }
+
+            var button = Object.FindAnyObjectByType<DeckFactionButton>(FindObjectsInactive.Include);
+            if (button == null)
+            {
+                var save = Object.FindAnyObjectByType<DeckSaveButton>(FindObjectsInactive.Include);
+                if (save == null) { log.Add("덱 편집: 저장 버튼이 없어서 진영 바꾸기 버튼을 못 만듦"); return; }
+                var go = Object.Instantiate(save.gameObject, save.transform.parent);
+                go.name = "DeckFactionButton";
+                Object.DestroyImmediate(go.GetComponent<DeckSaveButton>());
+                button = go.AddComponent<DeckFactionButton>();
+                button.background = go.GetComponent<SpriteRenderer>();
+                go.transform.position = save.transform.position + DeckSwitchOffset;
+            }
+            button.builder = ui;
+            ui.switchLabel = button.GetComponentInChildren<TextMesh>(true);
+            UnityUtil.SetTextHeight(ui.switchLabel, SwitchLabelHeight, true); // 저장 버튼 글자보다 작게 (글자가 길어서)
+            UnityUtil.SetText(ui.switchLabel, string.Format(GameTexts.DeckBuilderSwitch, GameTexts.QingName));
+            EditorUtility.SetDirty(button);
+            EditorUtility.SetDirty(ui);
+            log.Add("덱 편집: 조선·청 덱 바꾸기 버튼 연결 (청 덱 " + (ui.qingDeck != null ? ui.qingDeck.TotalCount() + "장" : "없음") + ")");
         }
 
         /// <summary>타일 순서: 조선 먼저, 같은 진영이면 유닛 → 진 → 장비 → 전술, 같은 종류면 비용 순.</summary>

@@ -24,18 +24,9 @@ namespace CardBattle
         public const string ReasonBoth = "양쪽이 동시에 패배 조건에 걸렸습니다";   // 무승부 이유
         public const string GameOverHint = "턴 종료 버튼을 누르면 계속"; // 승패 배너 아래 안내 (처음 화면이 있으면 처음 화면으로, 없으면 새 판)
 
-        // ---- 2인 대전 (한 컴퓨터에서 번갈아) ----
-        public const string JoseonName = "조선";   // 아래쪽 편 이름
-        public const string QingName = "청";       // 위쪽 편 이름
-        public const string PlayerManaTwoPlayer = "조선 군력 {0} / {1}   (턴 {2})"; // 2인 대전에서 아래쪽 군력
-        public const string EnemyManaTwoPlayer = "청 군력 {0} / {1}";               // 2인 대전에서 위쪽 군력
-        public const string PlayerHealthTwoPlayer = "조선 체력 {0} / {1}";          // 2인 대전에서 아래쪽 체력
-        public const string EnemyHealthTwoPlayer = "청 체력 {0} / {1}";             // 2인 대전에서 위쪽 체력
-        public const string CurtainTurn = "{0} 차례입니다\n\n상대는 화면을 보지 않게 자리를 넘겨 주세요\n(화면을 클릭하면 시작)"; // {0}=편 이름
-        public const string TurnInfo = "지금: {0} 차례\n\n카드를 다 냈으면\n[턴 종료]를 누르세요"; // 오른쪽 안내판
-        public const string SideWins = "{0} 승리!";                       // {0}=이긴 편
-        public const string ReasonSideHealth = "{0}의 체력이 모두 닳았습니다";   // {0}=진 편
-        public const string ReasonSideDeck = "{0}은 더 이상 뽑을 카드가 없습니다"; // {0}=진 편
+        // ---- 진영 이름 ----
+        public const string JoseonName = "조선";
+        public const string QingName = "청";
 
         // ---- 온라인 대전 (오른쪽 안내판, 승패 배너) ----
         public const string OnlineConnecting = "서버에 연결하는 중…\n\n(서버가 잠들어 있으면\n깨어나는 데 1분쯤 걸려요)";
@@ -46,6 +37,14 @@ namespace CardBattle
         public const string OnlineOpponentLeft = "상대가 나갔습니다";   // 승패 배너
         public const string OnlineConnectionLost = "연결이 끊겼습니다"; // 승패 배너
         public const string ChooseFaction = "진영을 고르세요";         // 배틀 시작 때 장수 고르기 화면 제목
+        public const string RoomChoose = "2인 대전 · 방";                // 방 만들기/참가 고르기 화면 제목
+        public const string RoomCreate = "방 만들기";
+        public const string RoomCreateHelp = "번호를 친구에게\n알려 주세요";
+        public const string RoomJoin = "방 참가";
+        public const string RoomJoinHelp = "친구가 알려 준\n번호를 넣으세요";
+        public const string RoomCodeInput = "방 번호 4자리를 키보드로 넣으세요 (지우기: Backspace)";
+        public const string RoomWaiting = "방 번호: {0}\n\n친구가 [2인 대전] → [방 참가]에\n이 번호를 넣으면 시작합니다"; // {0}=방 번호 (오른쪽 안내판)
+        public const string RoomNotFound = "그 번호의 방이 없습니다\n\n[다시 시작]을 누르면\n다시 고를 수 있습니다";
 
         /// <summary>장수 판의 이름 ("조선 · 인조").</summary>
         public static string HeroTitle(Faction faction, CardData hero)
@@ -71,6 +70,8 @@ namespace CardBattle
         public const string TutorialFreePlay = "튜토리얼 4/4 · 실전\n\n이제 자유롭게 싸워서\n청군의 체력을 0으로\n만드세요!";
 
         // ---- 덱 빌더 ----
+        public const string DeckBuilderTitle = "덱 편집 - {0}";          // {0}=진영 이름
+        public const string DeckBuilderSwitch = "{0} 덱 편집";            // 진영 바꾸기 버튼, {0}=바꿀 진영
         public const string DeckBuilderReady = "덱 카드 수: {0}장 (저장 가능)";            // {0}=총 장수
         public const string DeckBuilderTooSmall = "덱 카드 수: {0}장 (최소 {1}장 필요)";   // {0}=총 장수, {1}=최소 장수
         public const string TileCountBadge = "x{0}";                                        // {0}=이 카드를 넣은 매수
