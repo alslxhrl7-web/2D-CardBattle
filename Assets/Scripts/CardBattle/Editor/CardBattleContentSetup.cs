@@ -144,7 +144,7 @@ namespace CardBattle.EditorTools
         static readonly Vector3 EnemyPilePos = new Vector3(9.9f, 3.6f, 0f);    // 배틀: 상대 드로우 더미 (오른쪽 위)
         static readonly Vector3 LobbyPilePos = new Vector3(4.6f, -0.2f, 0f);   // 처음 화면: 내 덱 (클릭 → 덱 편집)
         const float PileScale = 0.8f;        // 배틀 화면 덱 더미 크기 배율
-        static readonly Vector3 RestartButtonPos = new Vector3(7.2f, 5.85f, 0f); // 배틀: "다시 시작" (오른쪽 위)
+        static readonly Vector3 RestartButtonPos = new Vector3(7.0f, 5.85f, 0f); // 배틀: "다시 시작" (오른쪽 위, 배경이 글씨에 맞춰 넓어져도 옆 버튼과 안 붙게)
         static readonly Vector3 QuitButtonPos = new Vector3(9.7f, 5.85f, 0f);    // 배틀: "게임 종료" (오른쪽 위 끝)
         const float LobbyPileScale = 1.1f;   // 처음 화면 덱 더미 크기 배율 (클릭하기 쉽게 조금 크게)
         static readonly Vector3 TutorialButtonPos = new Vector3(0f, -2.4f, 0f);  // 처음 화면: "튜토리얼" (팩 열기 아래)

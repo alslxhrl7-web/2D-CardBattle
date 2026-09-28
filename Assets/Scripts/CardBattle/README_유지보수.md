@@ -118,6 +118,10 @@ Play를 누르면 **처음 화면**이 뜹니다.
 - 새 유닛에 공격음을 주려면 `Attacks/` 폴더에 카드 에셋 이름과 같은 .wav를 넣기만 하면 된다.
 - 출처: 칼·창·도끼·말 소리, 타격음, 배경음 = VARCO Sound(NC AI)로 생성. 대포 = OpenGameArt "Battle at sea"(Thimras, CC0). 화살 = Freesound #205938(Twisted_Euphoria, CC0). 나머지(카드·버튼·승패 등) = 코드로 직접 합성. VARCO 결과물의 상업적 이용 조건은 NC AI에 확인할 것.
 
+**웹에서 글씨가 흐릴 때.** 웹(WebGL)은 품질 단계 "Mobile"을 쓰고(Project Settings → Quality의 WebGL 기본값), 그 URP 설정 `Assets/Settings/Mobile_RPAsset`의 Render Scale이 1보다 작으면 화면을 작게 그렸다가 늘려서 글씨가 뭉개진다. 1로 맞춰 두었다(에디터는 "PC" 설정이라 원래 1).
+
+**버튼 배경 폭.** 버튼 글씨가 배경보다 길면 실행할 때 배경과 클릭 범위가 "글씨 폭 + 여백"으로 자동으로 넓어진다(`ClickableButton.LateUpdate`, 여백은 `LabelPadding`). 원래 배경보다 좁게 줄이지는 않으므로, 버튼을 더 넓게 하고 싶으면 씬에서 배경을 키우면 된다.
+
 **빌드 부탁하기 (Claude용).** `UserSettings/CardBattleBuildRequest.txt` 파일이 있으면, Unity가 스크립트를 다시 컴파일한 뒤 자동 적용이 끝나고 그 파일을 지우고 웹 빌드를 한 번 한다(`CardBattleAutoApply`).
 
 **itch.io에 올리기.** 메뉴 **CardBattle → itch.io용 WebGL 빌드**를 누르면(약 15~20분) 한글 글꼴 적용 → 웹 설정 → 빌드 → `Builds/CardBattle_itch.zip` 생성까지 한 번에 된다. 결과는 `Logs/CardBattleWebBuild.log`. 웹에서는 Unity 기본 글꼴에 한글이 없어서 `Assets/Fonts/NanumGothic`(SIL OFL, 무료 배포 가능)을 쓴다. 새 글자(TextMesh)를 씬에 추가했다면 **CardBattle → 한글 글꼴 적용**을 한 번 눌러 준다.
