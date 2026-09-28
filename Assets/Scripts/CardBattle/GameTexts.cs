@@ -57,7 +57,7 @@ namespace CardBattle
         /// <summary>장수 판 아래 영웅 능력 설명 (이름 (비용) + 효과).</summary>
         public static string HeroPower(Faction faction)
         {
-            return faction == Faction.Qing ? "Charge Order (2)\n가장 강한 아군 바로 공격" : "Fortify (1)\n가장 약한 아군 체력 +3";
+            return faction == Faction.Qing ? "Charge Order (2)\n강한 아군 바로 공격" : "Fortify (1)\n약한 아군 체력 +3";
         }
 
         public const string OnlineDesync = "두 화면이 어긋났습니다";    // 승패 배너 (상대 행동을 적용할 수 없을 때)

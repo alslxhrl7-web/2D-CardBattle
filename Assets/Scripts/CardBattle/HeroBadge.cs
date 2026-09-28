@@ -35,7 +35,7 @@ namespace CardBattle
             badge.portrait.sortingOrder = order + 1;
 
             badge.nameText = badge.Label(style, "Name", -0.62f, 0.26f, true, order + 2);
-            badge.powerText = badge.Label(style, "Power", -1.1f, 0.15f, false, order + 2);
+            badge.powerText = badge.Label(style, "Power", -1.1f, 0.17f, false, order + 2);
             return badge;
         }
 

@@ -1025,6 +1025,10 @@ namespace CardBattle
         void ShowHeroSelect()
         {
             ClearBoard();
+            ResetState(); // 승패 배너 숨기기 등 (배틀 화면을 켜면 배너 오브젝트도 같이 켜지므로)
+            playerDrawPile.Clear();
+            enemyDrawPile.Clear();
+            RefreshAllDisplays();
             GameAudio.StopAmbience();
             busy = true; // 고르는 동안 턴 종료·카드 내기 막기
             if (heroSelect == null)
@@ -1045,6 +1049,7 @@ namespace CardBattle
                     var f = faction;
                     var badge = HeroBadge.Create(f + "Choice", new Vector3(f == Faction.Joseon ? -2.6f : 2.6f, 0f, -5.1f), heroSelect.transform, manaText, HeroSelectSortingOrder + 2);
                     badge.Show(HeroOf(f), GameTexts.HeroTitle(f, HeroOf(f)), GameTexts.HeroPower(f));
+                    badge.transform.localScale = Vector3.one * 1.5f; // 고르기 화면에서는 크게
                     badge.onClick = () => { playerFaction = f; StartBattle(); };
                 }
             }
