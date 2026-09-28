@@ -22,7 +22,7 @@ namespace CardBattle.EditorTools
     [InitializeOnLoad]
     public static class CardBattleAutoApply
     {
-        const string ApplyVersion = "v17-buttonfit-1";                                // 적용 버전 (바뀌면 다시 한 번 실행됨)
+        const string ApplyVersion = "v20-heroes-1";                                   // 적용 버전 (바뀌면 다시 한 번 실행됨)
         const string PrefKey = "CardBattle.AutoApplyVersion";                        // 마지막으로 적용한 버전을 저장하는 키
         const string ScenePath = "Assets/Scenes/SampleScene.unity";                  // 게임 씬
         const string BackgroundPath = "Assets/Resources/Backgrounds/BattleBackground.png"; // 배경 그림

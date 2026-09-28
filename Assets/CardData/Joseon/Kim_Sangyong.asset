@@ -22,7 +22,6 @@ MonoBehaviour:
   health: 5
   spellEffect: 0
   effectValue: 0
-  keywordText: "Rally: \uC0AC\uB9DD \uC2DC \uC544\uAD70 \uB79C\uB364 1\uAE30 +1/+1"
+  keywordText: "Rally: \uC4F0\uB7EC\uC9C0\uBA74 \uCCB4\uB825\uC774 \uAC00\uC7A5 \uB0AE\uC740 \uC544\uAD70 +1/+1"
   flavorText: "\uD56D\uC804 \uC911 \uC21C\uAD6D\uD55C \uBB38\uC2E0, \uC8FD\uC74C\uC870\uCC28 \uBCD1\uC0AC\uB4E4\uC758 \uC0AC\uAE30\uB85C \uC804\uD658."
   portrait: {fileID: 21300000, guid: 5a9b4564f6ebaa6468533ccf276c89aa, type: 3}
-  model3D: {fileID: 0}

@@ -39,13 +39,14 @@ namespace CardBattle
         /// </summary>
         public static IEnumerator PlayAttacks(MonoBehaviour runner, LaneCombat.Result plan, Vector3 playerHeroPos, Vector3 enemyHeroPos, TextMesh textStyle)
         {
-            // 레인별로 묶기
+            // 레인별로 묶기 (Chain Cavalry의 추가 공격은 같은 레인의 첫 공격이 끝난 다음 따로 보여준다)
             var byLane = new SortedDictionary<int, List<LaneCombat.Hit>>();
             foreach (var hit in plan.hits)
             {
                 if (hit.attacker == null) continue;
+                int key = hit.lane * 2 + (hit.chained ? 1 : 0);
                 List<LaneCombat.Hit> list;
-                if (!byLane.TryGetValue(hit.lane, out list)) { list = new List<LaneCombat.Hit>(); byLane[hit.lane] = list; }
+                if (!byLane.TryGetValue(key, out list)) { list = new List<LaneCombat.Hit>(); byLane[key] = list; }
                 list.Add(hit);
             }
 

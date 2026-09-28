@@ -12,7 +12,7 @@ namespace CardBattle
     ///
     /// 메시지는 글자 한 줄이고 | 로 나눈다.
     ///   서버 → 나   : wait (기다리는 중) / match|자리 / left (상대가 나감)
-    ///   나 ↔ 상대  : deck|카드,카드,…(뽑는 순서) / place|손패번호|레인 / equip|손패번호|레인 / spell|손패번호 / end
+    ///   나 ↔ 상대  : deck|카드,카드,…(뽑는 순서) / place|손패번호|레인 / equip|손패번호|레인 / spell|손패번호 / power(영웅 능력) / end
     /// 상대가 보낸 행동은 상대 쪽(위쪽) 손패·필드에 똑같이 적용한다.
     /// </summary>
     public class OnlineMatch : MonoBehaviour
@@ -82,6 +82,7 @@ namespace CardBattle
         public void SendEquip(int handIndex, int lane) { socket.Send("equip|" + handIndex + "|" + lane); }
         public void SendSpell(int handIndex) { socket.Send("spell|" + handIndex); }
         public void SendEndTurn() { socket.Send("end"); }
+        public void SendHeroPower() { socket.Send("power"); }
 
         // ================= 받기 =================
 
@@ -109,7 +110,7 @@ namespace CardBattle
                     manager.EndByDisconnect(GameTexts.OnlineOpponentLeft);
                     break;
                 default:
-                    opponentMoves.Enqueue(parts); // place / equip / spell / end
+                    opponentMoves.Enqueue(parts); // place / equip / spell / power / end
                     break;
             }
         }
@@ -135,14 +136,18 @@ namespace CardBattle
         /// <summary>
         /// 쌓인 상대 행동을 차례로 적용한다. 전투 연출 중이면 끝날 때까지 기다린다
         /// (내 화면의 연출이 상대보다 늦게 끝날 수 있어서).
+        /// 규칙상 안 되는 행동이 오면 두 게임이 이미 어긋난 것이라, 계속하지 않고 판을 끝낸다.
         /// </summary>
         void ApplyOpponentMoves()
         {
             while (InGame && opponentMoves.Count > 0 && !manager.IsBusy && !manager.IsGameOver)
             {
                 string[] move = opponentMoves.Dequeue();
-                if (!ApplyOpponentMove(move))
-                    Debug.LogWarning("[온라인] 상대 행동을 적용하지 못했습니다 (두 게임이 어긋남): " + string.Join("|", move));
+                if (ApplyOpponentMove(move)) continue;
+                Debug.LogWarning("[온라인] 상대 행동을 적용하지 못했습니다 (두 게임이 어긋남): " + string.Join("|", move));
+                Leave(); // 연결을 끊으면 상대 화면에는 "상대가 나갔습니다"가 뜬다
+                manager.EndByDisconnect(GameTexts.OnlineDesync);
+                return;
             }
         }
 
@@ -150,6 +155,7 @@ namespace CardBattle
         bool ApplyOpponentMove(string[] move)
         {
             if (move[0] == "end") return manager.EndOpponentTurn();
+            if (move[0] == "power") return manager.UseHeroPower(Side.Enemy);
 
             var hand = manager.enemyHand;
             int handIndex = int.Parse(move[1]);

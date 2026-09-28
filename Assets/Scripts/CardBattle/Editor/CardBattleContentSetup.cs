@@ -52,7 +52,7 @@ namespace CardBattle.EditorTools
               "장비: 후열에 놓으면 앞 카드 체력 +3", "징을 박은 갑옷이 칼날을 튕겨낸다."),
             S("Singijeon", "Singijeon", "신기전", "Singijeon Barrage", Faction.Joseon, CardKind.Spell, Rarity.Elite, 4, 0, 0,
               "전술: 적 필드 전체에 2 피해", "화차에서 불화살 백 발이 솟구친다.", SpellEffect.DamageAllEnemyUnits, 2),
-            S("Beacon_Fire", "BeaconFire", "봉수", "Beacon Fire", Faction.Joseon, CardKind.Spell, Rarity.Common, 2, 0, 0,
+            S("Beacon_Fire", "BeaconFire", "봉화", "Beacon Fire", Faction.Joseon, CardKind.Spell, Rarity.Common, 2, 0, 0,
               "전술: 카드 2장 드로우", "다섯 줄기 연기, 적이 국경을 넘었다.", SpellEffect.DrawCards, 2),
             S("Wooden_Palisade", "Palisade", "목책", "Wooden Palisade", Faction.Joseon, CardKind.Formation, Rarity.Common, 2, 0, 6,
               "Wall: 받는 피해 -1", "뾰족한 말뚝이 기병의 발을 묶는다."),
@@ -77,7 +77,7 @@ namespace CardBattle.EditorTools
             S("Kim_Junryong", "KimJunryong", "김준룡", "Kim Jun-ryong", Faction.Joseon, CardKind.Unit, Rarity.Legendary, 5, 4, 5,
               "등장: 적 필드 전체에 1 피해", "광교산의 밤, 적장 양굴리가 쓰러졌다.", SpellEffect.DamageAllEnemyUnits, 1),
             S("Yi_Sibaek", "YiSibaek", "이시백", "Yi Si-baek", Faction.Joseon, CardKind.Unit, Rarity.Legendary, 5, 3, 7,
-              "Wall, 등장: 받는 피해 -1 / 낼 때 내 체력 5 회복", "성을 지키는 자는 한 걸음도 물러서지 않는다.", SpellEffect.HealHero, 5),
+              "Wall, 등장: 받는 피해 -1 / 낼 때 내 장수 체력 5 회복", "성을 지키는 자는 한 걸음도 물러서지 않는다.", SpellEffect.HealHero, 5),
             S("Yu_Rim", "YuRim", "유림", "Yu Rim", Faction.Joseon, CardKind.Unit, Rarity.Hero, 7, 6, 7,
               "등장: 아군 필드 전체 +1/+1", "김화의 눈밭에서 청군 기병이 무너졌다.", SpellEffect.BuffAllAllies, 1),
             S("Mafuta", "Mafuta", "마부대", "Mafuta", Faction.Qing, CardKind.Unit, Rarity.Legendary, 5, 5, 4,
@@ -87,6 +87,33 @@ namespace CardBattle.EditorTools
             S("Dorgon", "Dorgon", "도르곤", "Dorgon", Faction.Qing, CardKind.Unit, Rarity.Hero, 7, 6, 6,
               "등장: 적 필드 전체에 2 피해", "강화도의 성문이 불타던 날.", SpellEffect.DamageAllEnemyUnits, 2),
         };
+
+        // ================= 카드 설명 고치기 — 이미 있는 카드 에셋에도 매번 이 문구를 넣는다 =================
+        // 키워드 효과(CardKeywords.cs)가 실제로 하는 일과 설명이 같도록 맞춘 문구. 효과를 바꾸면 여기도 같이 고친다.
+        static readonly KeyValuePair<string, string>[] KeywordTexts =
+        {
+            T("Kim_Sangyong", "Rally: 쓰러지면 체력이 가장 낮은 아군 +1/+1"),
+            T("Im_Gyeongeop", "Last Stand: 체력 3 미만이 되면 공격력 +3"),
+            T("Righteous_Army_Militia", "Swarm: 이미 낸 의병 수만큼 비용 감소"),
+            T("Steppe_Raider", "Momentum: 왼쪽에서 먼저 공격한 아군 1기당 공격력 +1"),
+            T("Bannerman_Rider", "Charge: 낼 때 같은 레인 적(없으면 장수)을 바로 공격"),
+            T("Mounted_Archer", "Ranged, Hit and Run: 상대 Wall 무시 / 같은 레인 적에게 받는 피해 -1"),
+            T("Dodo", "Plunder: 전투에서 적을 쓰러뜨리면 1장 드로우"),
+            T("Yonggoldae", "Chain Cavalry: 적 전열을 쓰러뜨리면 적 장수도 공격"),
+            T("Yi_Sibaek", "Wall, 등장: 받는 피해 -1 / 낼 때 내 장수 체력 5 회복"),
+            T("King_Injo", "히어로파워 Fortify (1): 가장 약한 아군 체력 +3"),
+            T("Hong_Taiji", "히어로파워 Charge Order (2): 가장 강한 아군이 바로 공격"),
+        };
+        static KeyValuePair<string, string> T(string file, string text) { return new KeyValuePair<string, string>(file, text); }
+
+        // 한글 이름 고치기 — 이미 있는 카드 에셋에도 매번 이 이름을 넣는다
+        static readonly KeyValuePair<string, string>[] KoreanNames =
+        {
+            T("Beacon_Fire", "봉화"),
+        };
+
+        // 장수 카드 (배틀 화면 왼쪽 장수 판의 그림·이름으로 쓴다. 영웅 능력은 CardManager). 덱·덱 편집·카드팩에는 넣지 않는다.
+        static readonly string[] HeroPowerCards = { "King_Injo", "Hong_Taiji" };
 
         // 이미 있는 시작 덱에도 한 장씩 넣어 주는 전설·히어로 카드 (덱에 없을 때만 넣는다)
         static readonly string[] NewJoseonLegends = { "Kim_Junryong", "Yi_Sibaek", "Yu_Rim" };
@@ -108,7 +135,7 @@ namespace CardBattle.EditorTools
         static KeyValuePair<string, int> D(string file, int count) { return new KeyValuePair<string, int>(file, count); }
 
         // ================= 튜토리얼 덱 — 섞지 않고 위에서부터 순서대로 뽑는다 =================
-        // 첫 손패 5장에 의병(1턴)·편전(2턴)·봉수(3턴)가 들어오도록 맨 앞에 둔다 (TutorialGuide 단계 순서).
+        // 첫 손패 5장에 의병(1턴)·편전(2턴)·봉화(3턴)가 들어오도록 맨 앞에 둔다 (TutorialGuide 단계 순서).
         static readonly KeyValuePair<string, int>[] TutorialJoseonDeck =
         {
             D("Righteous_Army_Militia", 1), D("Pyeonjeon", 1), D("Beacon_Fire", 1), D("Wall_Guard", 1), D("Joseon_Archer", 1),
@@ -133,11 +160,11 @@ namespace CardBattle.EditorTools
         const string TutorialQingPath = "Assets/DeckData/Tutorial_Qing.asset";     // 튜토리얼 청 덱
 
         // ---- 덱 편집 화면 타일 배치 (11칸 × 3줄 = 33칸) ----
-        const int TileColumns = 11;          // 한 줄에 놓을 타일 수
-        const float TileSpacingX = 1.85f;    // 타일 가로 간격 (11칸 × 1.85 ≈ 배경판 폭)
+        const int TileColumns = 8;           // 한 줄에 놓을 타일 수 (조선 카드만 나오므로 8칸 × 2줄)
+        const float TileSpacingX = 1.85f;    // 타일 가로 간격
         static readonly float[] TileRowsY = { 3.5f, 0.9f, -1.7f }; // 줄마다의 y 위치 (위에서 아래로)
         const float TileScale = 0.55f;       // 타일 크기 (기존 타일과 같음)
-        const float PanelMinWidth = 21f;     // 덱 편집 배경판 최소 가로 폭 (11칸이 들어가도록 넓힘)
+        const float PanelMinWidth = 21f;     // 덱 편집 배경판 최소 가로 폭
 
         // ---- 덱 더미 위치 ----
         static readonly Vector3 PlayerPilePos = new Vector3(9.9f, -2.4f, 0f);  // 배틀: 내 드로우 더미 (오른쪽 아래)
@@ -165,10 +192,13 @@ namespace CardBattle.EditorTools
         public static void Apply(List<string> log)
         {
             CreateCards(log);
+            FixCardTexts(log);
             WriteDeck(JoseonDeckPath, JoseonDeck, log);
             WriteDeck(QingDeckPath, QingDeck, log);
             AddToDeck(JoseonDeckPath, NewJoseonLegends, log);
             AddToDeck(QingDeckPath, NewQingLegends, log);
+            KeepDeckCardsOnly(JoseonDeckPath, Faction.Joseon, log);
+            KeepDeckCardsOnly(QingDeckPath, Faction.Qing, log);
             RefillPack(log);
             var tutorialJoseon = WriteTutorialDeck(TutorialJoseonPath, "튜토리얼 조선", Faction.Joseon, TutorialJoseonDeck, log);
             var tutorialQing = WriteTutorialDeck(TutorialQingPath, "튜토리얼 청", Faction.Qing, TutorialQingDeck, log);
@@ -202,6 +232,46 @@ namespace CardBattle.EditorTools
                 EditorUtility.SetDirty(card);
                 log.Add("카드 생성: " + path);
             }
+        }
+
+        /// <summary>카드 설명과 한글 이름을 KeywordTexts·KoreanNames 표대로 맞춘다(다를 때만 바꾼다).</summary>
+        static void FixCardTexts(List<string> log)
+        {
+            int changed = 0;
+            foreach (var kv in KeywordTexts)
+            {
+                var card = FindCard(kv.Key);
+                if (card == null || card.keywordText == kv.Value) continue;
+                card.keywordText = kv.Value;
+                EditorUtility.SetDirty(card);
+                changed++;
+            }
+            foreach (var kv in KoreanNames)
+            {
+                var card = FindCard(kv.Key);
+                if (card == null || card.cardNameKo == kv.Value) continue;
+                card.cardNameKo = kv.Value;
+                EditorUtility.SetDirty(card);
+                changed++;
+            }
+            if (changed > 0) log.Add("카드 설명·이름 고침: " + changed + "장");
+        }
+
+        /// <summary>덱 편집·시작 덱·카드팩에 넣을 수 있는 카드인지: 그 진영 카드이고 영웅 능력 카드가 아니어야 한다.</summary>
+        static bool IsDeckCard(CardData card, Faction faction)
+        {
+            return card != null && card.faction == faction && System.Array.IndexOf(HeroPowerCards, card.name) < 0;
+        }
+
+        /// <summary>덱에서 다른 진영 카드와 영웅 능력 카드를 뺀다 (예전에는 덱 편집에서 섞을 수 있었음).</summary>
+        static void KeepDeckCardsOnly(string path, Faction faction, List<string> log)
+        {
+            var deck = AssetDatabase.LoadAssetAtPath<DeckData>(path);
+            if (deck == null) return;
+            int removed = deck.entries.RemoveAll(e => e == null || !IsDeckCard(e.card, faction));
+            if (removed == 0) return;
+            EditorUtility.SetDirty(deck);
+            log.Add("덱에서 뺀 카드 " + removed + "종: " + path + " (" + deck.TotalCount() + "장 남음)");
         }
 
         /// <summary>진영 폴더(예: Assets/CardData/Qing)가 없으면 만든다.</summary>
@@ -287,6 +357,7 @@ namespace CardBattle.EditorTools
             var pack = AssetDatabase.LoadAssetAtPath<CardPackData>(JoseonPackPath);
             if (pack == null) return;
             pack.AutoFillFromFaction();
+            pack.cardPool.RemoveAll(c => !IsDeckCard(c, Faction.Joseon)); // 영웅 능력 카드는 팩에서도 뺀다
             EditorUtility.SetDirty(pack);
             log.Add("조선 기본팩 카드 풀: " + pack.cardPool.Count + "장");
         }
@@ -294,8 +365,8 @@ namespace CardBattle.EditorTools
         // ================= 3) 덱 편집 타일 =================
 
         /// <summary>
-        /// 덱 편집 화면에 모든 카드(히어로 제외 없이 전부)의 타일이 있도록 기존 타일을 복제해 추가하고,
-        /// 진영 → 종류 → 비용 순서로 11칸 × 3줄에 다시 배치한다.
+        /// 덱 편집 화면에 조선 카드(영웅 능력 카드 제외)의 타일만 있도록, 없는 타일은 기존 타일을 복제해 만들고
+        /// 필요 없는 타일(청 카드 등)은 지운 뒤 종류 → 비용 순서로 8칸씩 다시 배치한다. (플레이어 덱 = 조선 덱)
         /// </summary>
         static void LayoutDeckBuilderTiles(List<string> log)
         {
@@ -304,18 +375,30 @@ namespace CardBattle.EditorTools
             var template = ui.tiles[0];
             var grid = template.transform.parent;
 
-            // 모든 카드 에셋 모으기
+            // 덱에 넣을 수 있는 카드 에셋 모으기 (조선, 영웅 능력 카드 제외)
             var all = new List<CardData>();
             foreach (var guid in AssetDatabase.FindAssets("t:CardData"))
             {
                 var c = AssetDatabase.LoadAssetAtPath<CardData>(AssetDatabase.GUIDToAssetPath(guid));
-                if (c != null) all.Add(c);
+                if (IsDeckCard(c, Faction.Joseon)) all.Add(c);
             }
             all.Sort(CompareForTiles);
 
-            // 없는 카드의 타일 만들기
+            // 있는 타일 정리: 필요 없는 카드의 타일은 지운다
             var byCard = new Dictionary<CardData, DeckBuilderTile>();
-            foreach (var t in ui.tiles) if (t != null && t.card != null) byCard[t.card] = t;
+            int removed = 0;
+            foreach (var t in ui.tiles)
+            {
+                if (t == null) continue;
+                if (t.card != null && all.Contains(t.card) && !byCard.ContainsKey(t.card)) { byCard[t.card] = t; continue; }
+                if (t == template) template = null; // 복제용 원본을 지우게 되면 아래에서 다른 타일을 원본으로 쓴다
+                Object.DestroyImmediate(t.gameObject);
+                removed++;
+            }
+            if (template == null) foreach (var t in byCard.Values) { template = t; break; }
+            if (template == null) { log.Add("덱 편집 타일: 복제할 타일이 없음"); return; }
+
+            // 없는 카드의 타일 만들기
             int added = 0;
             foreach (var card in all)
             {
@@ -356,7 +439,7 @@ namespace CardBattle.EditorTools
                 bg.localScale = new Vector3(s.x * PanelMinWidth / sr.bounds.size.x, s.y, s.z);
                 EditorUtility.SetDirty(bg);
             }
-            log.Add("덱 편집 타일 " + ui.tiles.Count + "개 (새로 " + added + "개)");
+            log.Add("덱 편집 타일 " + ui.tiles.Count + "개 (새로 " + added + "개, 지움 " + removed + "개)");
         }
 
         /// <summary>타일 순서: 조선 먼저, 같은 진영이면 유닛 → 진 → 장비 → 전술, 같은 종류면 비용 순.</summary>
@@ -478,6 +561,8 @@ namespace CardBattle.EditorTools
 
             manager.tutorialPlayerDeck = tutorialJoseon;
             manager.tutorialEnemyDeck = tutorialQing;
+            manager.joseonHero = FindCard("King_Injo"); // 장수 판에 쓰는 그림·이름
+            manager.qingHero = FindCard("Hong_Taiji");
             EditorUtility.SetDirty(manager);
 
             battleStart.mode = GameMode.VsAI;

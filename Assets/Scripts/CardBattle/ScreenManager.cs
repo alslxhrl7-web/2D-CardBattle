@@ -69,7 +69,7 @@ namespace CardBattle
 
             // 배틀 화면에 들어갈 때마다 새 판 시작 (오브젝트를 먼저 켠 다음에 해야 카드가 제자리로 간다)
             // 배경음은 StartBattle이 켜고, 배틀이 아닌 화면에서는 끈다
-            if (screen == GameScreen.Battle && manager != null) manager.StartBattle();
+            if (screen == GameScreen.Battle && manager != null) manager.StartBattle(true); // AI 대전은 진영 고르기부터
             else
             {
                 GameAudio.StopAmbience();

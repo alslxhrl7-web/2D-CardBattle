@@ -45,13 +45,29 @@ namespace CardBattle
         public const string OnlineTheirTurn = "상대 차례\n\n상대가 카드를 내는 중…";
         public const string OnlineOpponentLeft = "상대가 나갔습니다";   // 승패 배너
         public const string OnlineConnectionLost = "연결이 끊겼습니다"; // 승패 배너
+        public const string ChooseFaction = "진영을 고르세요";         // 배틀 시작 때 장수 고르기 화면 제목
+
+        /// <summary>장수 판의 이름 ("조선 · 인조").</summary>
+        public static string HeroTitle(Faction faction, CardData hero)
+        {
+            string side = faction == Faction.Qing ? QingName : JoseonName;
+            return hero != null ? side + " · " + hero.cardNameKo : side;
+        }
+
+        /// <summary>장수 판 아래 영웅 능력 설명 (이름 (비용) + 효과).</summary>
+        public static string HeroPower(Faction faction)
+        {
+            return faction == Faction.Qing ? "Charge Order (2)\n가장 강한 아군 바로 공격" : "Fortify (1)\n가장 약한 아군 체력 +3";
+        }
+
+        public const string OnlineDesync = "두 화면이 어긋났습니다";    // 승패 배너 (상대 행동을 적용할 수 없을 때)
 
         // ---- 튜토리얼 안내판 (오른쪽) ----
         public const string TutorialPlaceUnit = "튜토리얼 1/4 · 유닛 내기\n\n손패의 [의병]을 끌어서\n앞줄(전열) 빈 칸에 놓으세요.\n\n카드 왼쪽 위 숫자가\n필요한 군력입니다.";
         public const string TutorialEndFirstTurn = "좋아요!\n\n이제 [턴 종료]를 누르세요.\n같은 줄 카드끼리 싸우고,\n앞이 비어 있으면\n적 장수를 칩니다.";
         public const string TutorialEquip = "튜토리얼 2/4 · 장비\n\n[편전]을 의병 바로 뒤\n뒷줄(후열) 칸에 놓으면\n앞 카드 공격력이 오릅니다.";
         public const string TutorialEndSecondTurn = "앞 카드가 쓰러지면\n뒤의 장비도 함께\n사라집니다.\n\n[턴 종료]를 누르세요.";
-        public const string TutorialSpell = "튜토리얼 3/4 · 전술\n\n[봉수]를 손패에서 위쪽\n(전장 쪽)으로 끌어 놓으면\n바로 효과가 납니다.\n(카드 2장 뽑기)";
+        public const string TutorialSpell = "튜토리얼 3/4 · 전술\n\n[봉화]를 손패에서 위쪽\n(전장 쪽)으로 끌어 놓으면\n바로 효과가 납니다.\n(카드 2장 뽑기)";
         public const string TutorialFreePlay = "튜토리얼 4/4 · 실전\n\n이제 자유롭게 싸워서\n청군의 체력을 0으로\n만드세요!";
 
         // ---- 덱 빌더 ----

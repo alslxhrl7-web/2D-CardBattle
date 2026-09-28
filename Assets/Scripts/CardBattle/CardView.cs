@@ -22,6 +22,8 @@ namespace CardBattle
         /// <summary>필드에서의 실시간 공격력. 처음엔 data.attack이고, 장비·전술 효과로 오를 수 있다.</summary>
         [System.NonSerialized] public int currentAttack;
 
+        bool lastStandUsed; // Last Stand 효과가 이미 발동했는지 (한 번만)
+
         /// <summary>체력이 0 이하가 되어 죽었는지.</summary>
         public bool IsDead { get { return currentHealth <= 0; } }
 
@@ -95,6 +97,7 @@ namespace CardBattle
 
             currentHealth = d.health; // 전투용 체력은 최대치에서 시작
             currentAttack = d.attack; // 전투용 공격력도 카드에 적힌 값에서 시작
+            lastStandUsed = false;
 
             ApplyTextSizes();
             ApplyFrameColors(d);
@@ -112,7 +115,19 @@ namespace CardBattle
         {
             if (amount <= 0) return;
             currentHealth -= amount;
-            UnityUtil.SetText(hpText, Mathf.Max(0, currentHealth).ToString()); // 화면에는 0 아래로 표시하지 않음
+            // Last Stand: 살아남았는데 체력이 기준 미만이 되면 공격력이 한 번 오른다
+            if (!IsDead && !lastStandUsed && currentHealth < CardKeywords.LastStandHealth && data != null && data.HasKeyword(CardKeywords.LastStand))
+            {
+                lastStandUsed = true;
+                currentAttack += CardKeywords.LastStandBonus;
+            }
+            RefreshStatTexts(); // 화면에는 0 아래로 표시하지 않음
+        }
+
+        /// <summary>손패에서 실제로 내야 하는 비용(Swarm 할인 반영)을 코스트 숫자에 적는다.</summary>
+        public void ShowCost(int cost)
+        {
+            UnityUtil.SetText(costText, cost.ToString());
         }
 
         /// <summary>장비·전술 효과로 공격력/체력을 올린다(음수면 내린다). 숫자 배지도 바로 갱신한다.</summary>

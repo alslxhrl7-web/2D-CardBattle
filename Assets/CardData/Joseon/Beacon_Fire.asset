@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7053b5164d8eb24ab5cff621008ec25, type: 3}
   m_Name: Beacon_Fire
   m_EditorClassIdentifier: Assembly-CSharp::CardBattle.CardData
-  cardNameKo: "\uBD09\uC218"
+  cardNameKo: "\uBD09\uD654"
   cardNameEn: Beacon Fire
   faction: 0
   cardKind: 1

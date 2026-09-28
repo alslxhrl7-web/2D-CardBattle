@@ -22,6 +22,6 @@ MonoBehaviour:
   health: 2
   spellEffect: 0
   effectValue: 0
-  keywordText: "Ranged, Hit and Run: \uC0C1\uB300 Wall \uBB34\uC2DC"
+  keywordText: "Ranged, Hit and Run: \uC0C1\uB300 Wall \uBB34\uC2DC / \uAC19\uC740 \uB808\uC778 \uC801\uC5D0\uAC8C \uBC1B\uB294 \uD53C\uD574 -1"
   flavorText: "\uC77C\uBC18 \uC720\uB2DB."
   portrait: {fileID: 21300000, guid: 335e670ac343c124eb6f092d1683aa64, type: 3}

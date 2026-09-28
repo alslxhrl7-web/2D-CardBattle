@@ -11,6 +11,10 @@ namespace CardBattle
     ///   SaveDeck()  : 총 장수가 GameRules.MinDeckSize 이상이면 저장한다. 장수와 상관없이 처음 화면으로 돌아간다.
     ///
     /// 최소 장수/카드별 최대 매수 규칙은 GameRules.cs, 안내 문구는 GameTexts.cs에서 바꾼다.
+    ///
+    /// 저장 위치: 에디터에서는 덱 에셋 파일, 게임(웹·PC 빌드)에서는 PlayerPrefs("카드이름:장수,…").
+    /// 빌드는 에셋 파일을 고칠 수 없어서, 게임이 켜질 때 PlayerPrefs에 저장된 덱을 덱 에셋에 다시 채워 넣는다.
+    /// (웹에서는 PlayerPrefs가 브라우저 저장소에 남는다. 브라우저 사이트 데이터를 지우면 시작 덱으로 돌아감)
     /// </summary>
     public class DeckBuilderUI : MonoBehaviour
     {
@@ -20,10 +24,43 @@ namespace CardBattle
         public TextMesh statusText;                  // "덱 카드 수: N장" 안내
         public ScreenManager screens;                // 저장 후 처음 화면으로 돌아가기 위한 화면 전환 담당
 
-        /// <summary>게임 시작 시 패널은 닫힌 상태로 둔다.</summary>
+        public const string SaveKey = "CardBattle.PlayerDeck"; // PlayerPrefs에 덱을 저장하는 이름
+
+        /// <summary>게임 시작 시 패널은 닫힌 상태로 둔다. 빌드에서는 저장해 둔 덱을 불러온다.</summary>
         void Awake()
         {
             if (panelRoot != null) panelRoot.SetActive(false);
+#if !UNITY_EDITOR
+            LoadSavedDeck(); // 에디터는 덱 에셋 파일에 바로 저장되므로 불러올 필요가 없다
+#endif
+        }
+
+        /// <summary>
+        /// PlayerPrefs에 저장된 덱("카드이름:장수,…")을 덱 에셋에 채운다. 카드는 타일 목록에서 이름으로 찾는다.
+        /// 저장된 게 없거나, 모르는 카드뿐이거나, 장수가 최소 장수보다 적으면 덱 에셋을 그대로 둔다.
+        /// </summary>
+        public void LoadSavedDeck()
+        {
+            string saved = PlayerPrefs.GetString(SaveKey, "");
+            if (targetDeck == null || saved == "") return;
+
+            var byName = new Dictionary<string, DeckBuilderTile>();
+            foreach (var tile in tiles) if (tile != null && tile.card != null) byName[tile.card.name] = tile;
+
+            var entries = new List<DeckData.Entry>();
+            int total = 0;
+            foreach (var item in saved.Split(','))
+            {
+                string[] parts = item.Split(':');
+                DeckBuilderTile tile;
+                int count;
+                if (parts.Length != 2 || !byName.TryGetValue(parts[0], out tile) || !int.TryParse(parts[1], out count)) continue;
+                count = Mathf.Clamp(count, 0, GameRules.MaxCopies(tile.card.rarity)); // 규칙보다 많이 저장돼 있으면 줄인다
+                if (count <= 0) continue;
+                entries.Add(new DeckData.Entry { card = tile.card, count = count });
+                total += count;
+            }
+            if (total >= GameRules.MinDeckSize) targetDeck.entries = entries;
         }
 
         /// <summary>패널을 연다(저장된 덱 내용을 다시 불러옴). 덱 편집 화면으로 들어갈 때 ScreenManager가 부른다.</summary>
@@ -79,15 +116,20 @@ namespace CardBattle
             RefreshStatus();
         }
 
-        /// <summary>현재 타일 매수를 덱 에셋에 그대로 써넣고 파일로 저장한다.</summary>
+        /// <summary>현재 타일 매수를 덱 에셋에 그대로 써넣고 저장한다(에디터: 에셋 파일, 게임: PlayerPrefs).</summary>
         void WriteTilesToDeck()
         {
             targetDeck.entries = new List<DeckData.Entry>();
+            var saved = new List<string>(); // PlayerPrefs에 남길 "카드이름:장수"
             foreach (var tile in tiles)
             {
                 if (tile == null || tile.card == null || tile.count <= 0) continue; // 0장인 카드는 넣지 않음
                 targetDeck.entries.Add(new DeckData.Entry { card = tile.card, count = tile.count });
+                saved.Add(tile.card.name + ":" + tile.count);
             }
+            // 게임(빌드)에서도 다음에 켤 때 남아 있도록 PlayerPrefs에 저장 (웹은 Save를 불러야 브라우저에 기록된다)
+            PlayerPrefs.SetString(SaveKey, string.Join(",", saved.ToArray()));
+            PlayerPrefs.Save();
 #if UNITY_EDITOR
             // 에디터에서는 에셋 파일에도 저장해서 Play를 멈춰도 유지되게 한다
             UnityEditor.EditorUtility.SetDirty(targetDeck);

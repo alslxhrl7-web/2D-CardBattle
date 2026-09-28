@@ -20,6 +20,8 @@ MonoBehaviour:
   cost: 1
   attack: 2
   health: 1
-  keywordText: "Momentum: \uC774\uBC88 \uD134 \uBA3C\uC800 \uACF5\uACA9\uD55C \uC720\uB2DB \uC218\uB9CC\uD07C \uACF5\uACA9\uB825 \uC99D\uAC00"
+  spellEffect: 0
+  effectValue: 0
+  keywordText: "Momentum: \uC67C\uCABD\uC5D0\uC11C \uBA3C\uC800 \uACF5\uACA9\uD55C \uC544\uAD70 1\uAE30\uB2F9 \uACF5\uACA9\uB825 +1"
   flavorText: "\uC77C\uBC18 \uC720\uB2DB."
   portrait: {fileID: 21300000, guid: a667cfd43fe7aef4a9c52e2fb0265176, type: 3}

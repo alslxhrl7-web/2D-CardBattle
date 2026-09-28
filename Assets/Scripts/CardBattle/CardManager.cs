@@ -44,6 +44,11 @@ namespace CardBattle
         public DeckData tutorialEnemyDeck;  // 튜토리얼 청 덱 (섞지 않음)
         public int startingHandSize = GameRules.StartingHandSize; // 게임 시작 시 뽑는 장수
 
+        [Header("장수 (영웅 능력·초상화)")]
+        public CardData joseonHero;       // 조선 장수 = 인조 (King_Injo 카드 에셋, 그림과 이름만 씀)
+        public CardData qingHero;         // 청 장수 = 홍타이지 (Hong_Taiji)
+        public Faction playerFaction = Faction.Joseon; // AI 대전에서 내가 고른 진영 (배틀 시작 때 고르기 화면에서 정함)
+
         [Header("게임 방식 (처음 화면의 버튼이 정한다)")]
         public GameMode mode = GameMode.VsAI;
 
@@ -78,6 +83,10 @@ namespace CardBattle
         const float CastSpellShowScale = 1.6f;   // 그때 카드 크기 (원래의 몇 배)
         const float CastSpellShowSeconds = 1.5f; // 보여 주는 시간
         const int CastSpellLayerBase = 1000;     // 다른 카드보다 위에 그리기 (×20 = 20000)
+        static readonly Vector3 PlayerHeroPos = new Vector3(-9.7f, -3.1f, 0f); // 내 장수 판 (왼쪽 아래)
+        static readonly Vector3 EnemyHeroPos = new Vector3(-9.7f, 3.1f, 0f);   // 상대 장수 판 (왼쪽 위)
+        const int HeroSortingOrder = 10;         // 장수 판 그리기 순서
+        const int HeroSelectSortingOrder = 32500; // 고르기 화면 (카드·안내판보다 위)
 
         [Header("현재 상태 (확인용 — 게임 시작 시 초기화됨)")]
         public int turnNumber = 1;                        // 현재 턴 번호
@@ -98,6 +107,10 @@ namespace CardBattle
         int playerCardsPlayedThisTurn;
         int enemyCardsPlayedThisTurn;
 
+        // 이번 판에 각 편이 카드별로 낸 장수 (Swarm 비용 할인용, 카드 에셋 이름 → 장수)
+        readonly Dictionary<string, int> playerPlayedCounts = new Dictionary<string, int>();
+        readonly Dictionary<string, int> enemyPlayedCounts = new Dictionary<string, int>();
+
         /// <summary>승패가 갈려서 게임이 끝났는지 (끝나면 턴 종료/카드 내기가 막힌다).</summary>
         public bool IsGameOver { get { return gameOver; } }
 
@@ -108,6 +121,9 @@ namespace CardBattle
         TutorialGuide tutorial;        // 튜토리얼 진행 (튜토리얼이 아니면 null)
         TurnCurtain curtain;           // 2인 대전 차례 가림막 (처음 쓸 때 만든다)
         TextMesh infoText;             // 오른쪽 안내판 (튜토리얼·2인 대전에서만, 처음 쓸 때 만든다)
+        HeroBadge playerHero, enemyHero; // 배틀 화면 왼쪽 장수 판 = 영웅 능력 버튼 (처음 쓸 때 만든다)
+        GameObject heroSelect;         // AI 대전 시작 때 진영 고르기 화면 (처음 쓸 때 만든다)
+        bool playerPowerUsed, enemyPowerUsed; // 이번 턴에 영웅 능력을 썼는지
 
         /// <summary>전투 연출 중이라 조작을 받지 않는 상태인지.</summary>
         public bool IsBusy { get { return busy; } }
@@ -176,8 +192,8 @@ namespace CardBattle
             else
             {
                 bool tutorialMode = mode == GameMode.Tutorial; // 튜토리얼 덱은 섞지 않는다
-                playerDrawPile = BuildDeck(tutorialMode ? tutorialPlayerDeck : playerDeckData, !tutorialMode);
-                enemyDrawPile = BuildDeck(tutorialMode ? tutorialEnemyDeck : enemyDeckData, !tutorialMode);
+                playerDrawPile = BuildDeck(tutorialMode ? tutorialPlayerDeck : DeckOf(FactionOf(Side.Player)), !tutorialMode);
+                enemyDrawPile = BuildDeck(tutorialMode ? tutorialEnemyDeck : DeckOf(FactionOf(Side.Enemy)), !tutorialMode);
             }
             for (int i = 0; i < startingHandSize; i++)
             {
@@ -187,6 +203,7 @@ namespace CardBattle
             CheckGameOver(); // 덱이 시작 손패보다 적으면 바로 끝난다
 
             // 3) 화면 갱신 후 첫 턴 시작
+            ShowHeroes();
             RefreshAllDisplays();
             if (!gameOver) BeginTurn();
         }
@@ -199,6 +216,7 @@ namespace CardBattle
             CardHoverPreview.Hide();
             busy = false;
             if (curtain != null) curtain.Hide();
+            if (heroSelect != null) heroSelect.SetActive(false);
 
             ClearHand(playerHand);
             ClearHand(enemyHand);
@@ -221,6 +239,8 @@ namespace CardBattle
             tutorial = mode == GameMode.Tutorial ? new TutorialGuide() : null;
             SetGameOver(false, "", GamePalette.ResultDraw, "");
             ResetCardsPlayedThisTurn();
+            playerPlayedCounts.Clear();
+            enemyPlayedCounts.Clear();
         }
 
         /// <summary>
@@ -240,9 +260,11 @@ namespace CardBattle
         /// 배틀 화면에서 새 판을 시작한다(배틀 시작·다시 시작 버튼). ResetGame()에 소리만 더한 것:
         /// 덱 섞는 소리 + 배틀 배경음. (Play 직후 Start()의 ResetGame은 처음 화면 뒤에서 조용히 준비만 한다)
         /// </summary>
-        public void StartBattle()
+        /// chooseFaction = true(처음 화면에서 들어올 때)면 AI 대전은 먼저 진영 고르기 화면을 띄운다. 다시 시작은 고른 진영 그대로.
+        public void StartBattle(bool chooseFaction = false)
         {
             if (mode == GameMode.Online) { WaitForOpponent(); return; }
+            if (mode == GameMode.VsAI && chooseFaction) { ShowHeroSelect(); return; }
             ResetGame();
             GameAudio.Play(GameAudio.Shuffle);
             if (!gameOver) GameAudio.StartAmbience(); // 시작하자마자 끝났으면 배경음은 켜지 않는다
@@ -340,6 +362,8 @@ namespace CardBattle
         {
             ChangeHealth(Side.Player, -plan.damageToPlayerHero);
             ChangeHealth(Side.Enemy, -plan.damageToEnemyHero);
+            for (int i = 0; i < plan.playerDraws; i++) DrawCard(Side.Player); // Plunder: 적을 쓰러뜨린 만큼 뽑기
+            for (int i = 0; i < plan.enemyDraws; i++) DrawCard(Side.Enemy);
             CheckGameOver(); // 양쪽 피해를 모두 반영한 뒤 한 번에 판정 (동시에 0이면 무승부)
             if (!gameOver) StartNextTurn();
         }
@@ -527,7 +551,7 @@ namespace CardBattle
             Side side = SideOf(fromHand);
             var field = FieldOf(side);
             if (slot == null || !slot.IsEmpty || !field.IsFrontSlot(slot)) return false; // 유닛·진은 내 전열 빈 칸에만
-            if (!ManaOf(side).TrySpend(view.data.cost)) return false;                    // 군력이 부족하면 실패
+            if (!ManaOf(side).TrySpend(CostOf(side, view.data))) return false;        // 군력이 부족하면 실패 (Swarm 할인 반영)
 
             int handIndex = TakeFromHand(view, fromHand, side);
             field.PlaceCard(view.transform, slot);
@@ -537,8 +561,47 @@ namespace CardBattle
             var equipment = EquipmentBehind(field, slot); // 같은 레인 후열 장비가 있으면 강화
             if (equipment != null) view.ApplyBuff(equipment.data.attack, equipment.data.health);
 
-            if (view.data.spellEffect != SpellEffect.None) ApplySpell(side, view.data); // 등장 효과 (전설·히어로 카드)
+            if (view.data.HasKeyword(CardKeywords.Charge)) ChargeStrike(side, view, LaneOf(field, slot)); // 돌격: 바로 한 번 공격
+            if (view.data.spellEffect != SpellEffect.None && !gameOver) ApplySpell(side, view.data);      // 등장 효과 (전설·히어로 카드)
             return true;
+        }
+
+        /// <summary>
+        /// Charge: 방금 낸 카드가 같은 레인 적 전열(없으면 적 장수)을 한 번 공격한다. 반격은 없다.
+        /// 피해 계산(Wall·Ranged·Hit and Run)은 전투와 같은 LaneCombat.DamageAgainst를 쓴다.
+        /// </summary>
+        void ChargeStrike(Side side, CardView attacker, int lane)
+        {
+            if (attacker.currentAttack <= 0) return;
+            GameAudio.PlayAttack(attacker.data);
+            var target = LaneCombat.FrontCard(FieldOf(side.Opponent()), lane);
+            if (target == null)
+            {
+                DamageHero(side.Opponent(), attacker.currentAttack);
+                return;
+            }
+            target.ApplyDamage(LaneCombat.DamageAgainst(attacker, target, attacker.currentAttack));
+            LaneCombat.RemoveDead(playerField, enemyField);
+        }
+
+        /// <summary>이 편이 지금 이 카드를 낼 때 드는 군력. Swarm 카드는 이번 판에 같은 카드를 낸 장수만큼 싸진다.</summary>
+        public int CostOf(Side side, CardData data)
+        {
+            if (data == null) return 0;
+            if (!data.HasKeyword(CardKeywords.Swarm)) return data.cost;
+            int played;
+            (side == Side.Player ? playerPlayedCounts : enemyPlayedCounts).TryGetValue(data.name, out played);
+            return Mathf.Max(0, data.cost - played);
+        }
+
+        /// <summary>손패 카드의 코스트 숫자를 실제 비용(Swarm 할인)에 맞춘다.</summary>
+        void RefreshHandCosts(Side side)
+        {
+            foreach (var card in HandOf(side).cards)
+            {
+                var view = card.GetComponent<CardView>();
+                if (view != null && view.data != null) view.ShowCost(CostOf(side, view.data));
+            }
         }
 
         /// <summary>
@@ -552,7 +615,7 @@ namespace CardBattle
             Side side = SideOf(fromHand);
             var field = FieldOf(side);
             if (slot == null || !slot.IsEmpty || !field.IsBackSlot(slot)) return false; // 내 후열 빈 칸에만
-            if (!ManaOf(side).TrySpend(view.data.cost)) return false;
+            if (!ManaOf(side).TrySpend(CostOf(side, view.data))) return false;
 
             int handIndex = TakeFromHand(view, fromHand, side);
             field.PlaceCard(view.transform, slot); // 장비 카드는 후열 칸에 그대로 남는다
@@ -586,7 +649,7 @@ namespace CardBattle
         {
             if (!CanUseFromHand(view, fromHand) || !view.data.IsSpell) return false;
             Side side = SideOf(fromHand);
-            if (!ManaOf(side).TrySpend(view.data.cost)) return false;
+            if (!ManaOf(side).TrySpend(CostOf(side, view.data))) return false;
 
             var data = view.data;
             bool wasHidden = view.IsFaceDown;                   // 온라인 상대의 전술 = 뒷면이라 아직 무슨 카드인지 모름
@@ -605,6 +668,9 @@ namespace CardBattle
         /// </summary>
         void ShowCastSpell(CardView view)
         {
+            var mover = view.GetComponent<CardSlotMover>();
+            if (mover != null) mover.StopAllCoroutines(); // 손패 정렬 이동이 남아 있으면 카드를 도로 끌고 가므로 멈춘다
+            view.transform.rotation = Quaternion.identity;  // 손패 부채꼴 기울기 없애기
             view.transform.position = CastSpellShowPos;
             view.transform.localScale = Vector3.one * CastSpellShowScale;
             view.SetLayerBase(CastSpellLayerBase);
@@ -668,6 +734,11 @@ namespace CardBattle
 
             if (side == Side.Player) playerCardsPlayedThisTurn++;
             else enemyCardsPlayedThisTurn++;
+            var counts = side == Side.Player ? playerPlayedCounts : enemyPlayedCounts;
+            int played;
+            counts.TryGetValue(view.data.name, out played);
+            counts[view.data.name] = played + 1;
+            RefreshHandCosts(side); // Swarm 카드는 이제 더 싸진다
             RefreshManaDisplay();
 
             if (tutorial != null && side == Side.Player)
@@ -732,6 +803,8 @@ namespace CardBattle
         {
             playerCardsPlayedThisTurn = 0;
             enemyCardsPlayedThisTurn = 0;
+            playerPowerUsed = false; // 영웅 능력도 턴마다 다시 쓸 수 있다
+            enemyPowerUsed = false;
         }
 
         /// <summary>
@@ -781,6 +854,7 @@ namespace CardBattle
             if (view == null || hand == null) return view;
 
             hand.AddCard(view.transform);
+            view.ShowCost(CostOf(SideOf(hand), data));    // Swarm 할인이 있으면 줄어든 비용으로 표시
             view.SetFaceDown(IsHandHidden(SideOf(hand))); // 2인 대전에서 차례가 아닌 쪽이 뽑은 카드는 뒷면
             var drag = view.GetComponent<CardDragHandler>();
             if (drag != null) drag.Init(this, hand); // 이 카드를 드래그해서 낼 수 있게 연결
@@ -836,16 +910,18 @@ namespace CardBattle
                 // 지금 손패를 AI가 판단할 수 있는 목록으로 만든다
                 var handCards = new List<CardData>();
                 var handViews = new List<CardView>();
+                var handCosts = new List<int>();
                 foreach (var tf in enemyHand.cards)
                 {
                     var view = tf != null ? tf.GetComponent<CardView>() : null;
                     handViews.Add(view);
                     handCards.Add(view != null ? view.data : null);
+                    handCosts.Add(view != null ? CostOf(Side.Enemy, view.data) : 0);
                 }
 
                 bool hasEmptyFront = enemyField.GetFirstEmpty(true) != null;       // 유닛·진을 놓을 칸
                 bool hasEquipSlot = EnemyAI.ChooseEquipSlot(enemyField) != null;   // 장비를 놓을 칸 (앞에 유닛이 있는 후열)
-                int pick = EnemyAI.ChooseCardToPlay(handCards, enemyMana.current, hasEmptyFront, hasEquipSlot); // 낼 카드 고르기
+                int pick = EnemyAI.ChooseCardToPlay(handCards, enemyMana.current, hasEmptyFront, hasEquipSlot, handCosts); // 낼 카드 고르기
                 if (pick < 0) break; // 낼 카드 없음
 
                 var card = handCards[pick];
@@ -855,6 +931,125 @@ namespace CardBattle
                 else played = TryPlaceCard(handViews[pick], enemyHand, EnemyAI.ChooseSlot(enemyField));             // 유닛·진
                 if (!played) break; // 안전장치 (못 냈으면 멈춘다)
             }
+            UseHeroPower(Side.Enemy); // 남은 군력으로 쓸 수 있으면 영웅 능력도 쓴다
+        }
+
+        // ================= 장수 · 영웅 능력 =================
+
+        /// <summary>이 편의 진영. 온라인은 자리(0 = 조선), AI 대전은 고른 진영, 2인 대전·튜토리얼은 아래쪽이 조선.</summary>
+        public Faction FactionOf(Side side)
+        {
+            Faction mine = mode == GameMode.Online ? (localSeat == 0 ? Faction.Joseon : Faction.Qing)
+                         : mode == GameMode.VsAI ? playerFaction : Faction.Joseon;
+            if (side == Side.Player) return mine;
+            return mine == Faction.Qing ? Faction.Joseon : Faction.Qing;
+        }
+
+        /// <summary>진영의 덱 (조선 = playerDeckData, 청 = enemyDeckData).</summary>
+        DeckData DeckOf(Faction faction) { return faction == Faction.Qing ? enemyDeckData : playerDeckData; }
+        /// <summary>진영의 장수 카드.</summary>
+        CardData HeroOf(Faction faction) { return faction == Faction.Qing ? qingHero : joseonHero; }
+
+        /// <summary>
+        /// 영웅 능력을 쓴다 (턴마다 한 번, 군력 소모). 못 쓰면 false.
+        ///   조선 인조 Fortify(1): 체력이 가장 낮은 아군 체력 +3
+        ///   청 홍타이지 Charge Order(2): 공격력이 가장 높은 아군이 같은 레인 적(없으면 장수)을 바로 공격 (Charge와 같음)
+        /// </summary>
+        public bool UseHeroPower(Side side)
+        {
+            if (!CanUseHeroPower(side)) return false;
+            var target = HeroPowerTarget(side);
+            Faction faction = FactionOf(side);
+            ManaOf(side).TrySpend(GameRules.HeroPowerCost(faction));
+            if (side == Side.Player) playerPowerUsed = true; else enemyPowerUsed = true;
+            if (IsMyOnlineMove(side)) online.SendHeroPower();
+
+            if (faction == Faction.Qing) ChargeStrike(side, target, LaneOfUnit(FieldOf(side), target));
+            else { target.ApplyBuff(0, GameRules.FortifyHealth); GameAudio.Play(GameAudio.Equip); }
+            RefreshManaDisplay();
+            return true;
+        }
+
+        /// <summary>지금 이 편이 영웅 능력을 쓸 수 있는지 (차례·군력·이번 턴 사용 여부·대상).</summary>
+        bool CanUseHeroPower(Side side)
+        {
+            if (gameOver || busy || IsCurtainShown || (side == Side.Player ? playerPowerUsed : enemyPowerUsed)) return false;
+            if (TakesTurns && side != activeSide) return false;
+            if (tutorial != null && !tutorial.IsFreePlay) return false; // 튜토리얼은 실전 단계부터
+            return ManaOf(side).current >= GameRules.HeroPowerCost(FactionOf(side)) && HeroPowerTarget(side) != null;
+        }
+
+        /// <summary>영웅 능력 대상: 인조 = 체력이 가장 낮은 아군, 홍타이지 = 공격력이 가장 높은 아군 (같으면 왼쪽). 없으면 null.</summary>
+        CardView HeroPowerTarget(Side side)
+        {
+            CardView best = null;
+            bool qing = FactionOf(side) == Faction.Qing;
+            foreach (var unit in FieldUnits(FieldOf(side)))
+            {
+                if (unit.IsDead || (qing && unit.currentAttack <= 0)) continue;
+                if (best == null || (qing ? unit.currentAttack > best.currentAttack : unit.currentHealth < best.currentHealth)) best = unit;
+            }
+            return best;
+        }
+
+        /// <summary>전열 카드가 몇 번째 레인에 있는지.</summary>
+        static int LaneOfUnit(FieldZone field, CardView unit)
+        {
+            for (int lane = 0; lane < field.LaneCount; lane++)
+                if (field.SlotAt(true, lane).OccupantView == unit) return lane;
+            return -1;
+        }
+
+        /// <summary>배틀 화면 왼쪽에 양쪽 장수 판을 (처음이면 만들어서) 지금 진영대로 보여준다.</summary>
+        void ShowHeroes()
+        {
+            if (playerHero == null) playerHero = CreateHeroBadge(Side.Player, PlayerHeroPos);
+            if (enemyHero == null) enemyHero = CreateHeroBadge(Side.Enemy, EnemyHeroPos);
+            foreach (var side in new[] { Side.Player, Side.Enemy })
+            {
+                Faction faction = FactionOf(side);
+                (side == Side.Player ? playerHero : enemyHero).Show(HeroOf(faction), GameTexts.HeroTitle(faction, HeroOf(faction)), GameTexts.HeroPower(faction));
+            }
+        }
+
+        /// <summary>장수 판 하나를 만든다. 누르면 그 편 영웅 능력 (내가 조작하는 편일 때만).</summary>
+        HeroBadge CreateHeroBadge(Side side, Vector3 position)
+        {
+            var badge = HeroBadge.Create(side + "Hero", position, BattleRoot(), manaText, HeroSortingOrder);
+            badge.onClick = () => { if (CanControlHand(HandOf(side))) UseHeroPower(side); };
+            badge.ready = () => CanUseHeroPower(side);
+            return badge;
+        }
+
+        /// <summary>AI 대전 시작 전: 보드를 비우고 인조/홍타이지 중 하나를 고르는 화면을 띄운다. 고르면 그 진영으로 새 판.</summary>
+        void ShowHeroSelect()
+        {
+            ClearBoard();
+            GameAudio.StopAmbience();
+            busy = true; // 고르는 동안 턴 종료·카드 내기 막기
+            if (heroSelect == null)
+            {
+                heroSelect = new GameObject("HeroSelect");
+                heroSelect.transform.SetParent(BattleRoot(), false);
+                heroSelect.transform.position = new Vector3(0f, 0f, -5f);
+                HudFactory.EnsureBackdrop(heroSelect.transform, "Backdrop", new Vector2(40f, 25f), GamePalette.CurtainButton.normal, HeroSelectSortingOrder);
+                var title = HudFactory.CreateLabel(manaText, "Title", new Vector3(0f, 3.4f, -5.1f));
+                title.transform.SetParent(heroSelect.transform, true);
+                UnityUtil.SetTextHeight(title, 0.55f, true);
+                title.anchor = TextAnchor.MiddleCenter;
+                title.color = GamePalette.InfoText;
+                title.text = GameTexts.ChooseFaction;
+                title.GetComponent<MeshRenderer>().sortingOrder = HeroSelectSortingOrder + 1;
+                foreach (var faction in new[] { Faction.Joseon, Faction.Qing })
+                {
+                    var f = faction;
+                    var badge = HeroBadge.Create(f + "Choice", new Vector3(f == Faction.Joseon ? -2.6f : 2.6f, 0f, -5.1f), heroSelect.transform, manaText, HeroSelectSortingOrder + 2);
+                    badge.Show(HeroOf(f), GameTexts.HeroTitle(f, HeroOf(f)), GameTexts.HeroPower(f));
+                    badge.onClick = () => { playerFaction = f; StartBattle(); };
+                }
+            }
+            heroSelect.SetActive(true);
+            RefreshInfoPanel();
         }
 
         // ================= 전투 / 체력 / 승패 =================

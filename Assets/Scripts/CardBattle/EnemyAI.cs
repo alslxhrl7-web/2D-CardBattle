@@ -16,19 +16,26 @@ namespace CardBattle
         /// 이번에 낼 카드의 손패 번호(인덱스)를 고른다. 낼 수 없는 카드는 건너뛴다.
         ///   유닛·진: 전열 빈 칸이 있어야 함   장비: 앞에 카드가 있는 후열 빈 칸이 있어야 함   전술: 언제나 가능
         /// 그중 가장 비싼 카드를 고른다(같으면 손패 앞쪽). 없으면 -1.
+        /// costs = 카드마다 실제로 드는 군력(Swarm 할인 반영). 주지 않으면 카드에 적힌 비용.
         /// </summary>
-        public static int ChooseCardToPlay(IList<CardData> hand, int availableMana, bool hasEmptyFront, bool hasEquipSlot)
+        public static int ChooseCardToPlay(IList<CardData> hand, int availableMana, bool hasEmptyFront, bool hasEquipSlot, IList<int> costs = null)
         {
             int best = -1; // 지금까지 찾은 가장 좋은 카드 번호 (-1 = 아직 없음)
             for (int i = 0; i < hand.Count; i++)
             {
                 var card = hand[i];
-                if (card == null || card.cost > availableMana) continue;
+                if (card == null || CostAt(hand, costs, i) > availableMana) continue;
                 if (card.IsFieldCard && !hasEmptyFront) continue;   // 놓을 전열 칸이 없음
                 if (card.IsEquipment && !hasEquipSlot) continue;    // 장비를 놓을 후열 칸이 없음
-                if (best < 0 || card.cost > hand[best].cost) best = i;
+                if (best < 0 || CostAt(hand, costs, i) > CostAt(hand, costs, best)) best = i;
             }
             return best;
+        }
+
+        /// <summary>i번째 카드의 비용 (costs가 있으면 그 값).</summary>
+        static int CostAt(IList<CardData> hand, IList<int> costs, int i)
+        {
+            return costs != null ? costs[i] : hand[i].cost;
         }
 
         /// <summary>

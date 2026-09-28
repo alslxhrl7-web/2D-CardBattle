@@ -22,6 +22,12 @@ namespace CardBattle
         // ---- 체력 ----
         public const int StartingHealth = 30;    // 히어로 시작 체력
 
+        // ---- 영웅 능력 (턴마다 한 번) ----
+        public const int FortifyHealth = 3;      // 인조 Fortify: 체력이 가장 낮은 아군 체력 +3
+
+        /// <summary>영웅 능력 비용: 조선 인조 Fortify 1, 청 홍타이지 Charge Order 2.</summary>
+        public static int HeroPowerCost(Faction faction) { return faction == Faction.Qing ? 2 : 1; }
+
         /// <summary>
         /// 덱에 같은 카드를 최대 몇 장까지 넣을 수 있는지(희귀도별). 덱 빌더 타일의 최대 매수도 여기서 정해진다.
         /// </summary>

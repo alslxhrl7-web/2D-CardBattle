@@ -4,7 +4,7 @@ namespace CardBattle
     /// 튜토리얼 진행 순서. 단계마다 안내 문구를 보여주고, 시킨 행동만 할 수 있게 막는다.
     ///   1) 유닛 내기 → 2) 턴 종료 → 3) 장비 놓기 → 4) 턴 종료 → 5) 전술 쓰기 → 6) 자유 플레이
     /// CardManager가 카드를 낼 때 / 턴을 넘길 때 알려주고, 낼 수 있는지 물어본다.
-    /// 튜토리얼 덱(Assets/DeckData/Tutorial_*.asset)은 섞지 않으므로, 첫 손패에 의병·편전·봉수가 들어온다.
+    /// 튜토리얼 덱(Assets/DeckData/Tutorial_*.asset)은 섞지 않으므로, 첫 손패에 의병·편전·봉화가 들어온다.
     /// 단계를 바꾸려면 Step에 이름을 넣고 아래 switch 네 곳에 한 줄씩 추가한다.
     /// </summary>
     public class TutorialGuide
