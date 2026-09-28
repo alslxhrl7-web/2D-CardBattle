@@ -74,6 +74,10 @@ namespace CardBattle
         static readonly Vector2 InfoPanelSize = new Vector2(5.6f, 3.4f);      // 안내판 배경 크기
         const float InfoTextHeight = 0.24f;    // 안내판 글자 높이
         const int InfoSortingOrder = 32400;    // 카드보다 위, 가림막보다 아래
+        static readonly Vector3 CastSpellShowPos = new Vector3(0f, 0.3f, -1f); // 상대가 쓴 전술 카드를 보여 줄 곳 (화면 가운데)
+        const float CastSpellShowScale = 1.6f;   // 그때 카드 크기 (원래의 몇 배)
+        const float CastSpellShowSeconds = 1.5f; // 보여 주는 시간
+        const int CastSpellLayerBase = 1000;     // 다른 카드보다 위에 그리기 (×20 = 20000)
 
         [Header("현재 상태 (확인용 — 게임 시작 시 초기화됨)")]
         public int turnNumber = 1;                        // 현재 턴 번호
@@ -585,12 +589,26 @@ namespace CardBattle
             if (!ManaOf(side).TrySpend(view.data.cost)) return false;
 
             var data = view.data;
+            bool wasHidden = view.IsFaceDown;                   // 온라인 상대의 전술 = 뒷면이라 아직 무슨 카드인지 모름
             int handIndex = TakeFromHand(view, fromHand, side); // 먼저 손패에서 없애고 (드로우 효과가 손패 자리를 쓸 수 있게)
-            UnityUtil.DestroySafe(view.gameObject); // 전술 카드는 쓰면 사라진다
+            if (wasHidden && Application.isPlaying) ShowCastSpell(view); // 잠깐 보여 주고 사라진다
+            else UnityUtil.DestroySafe(view.gameObject);                 // 전술 카드는 쓰면 사라진다
             GameAudio.Play(GameAudio.Spell);
             if (IsMyOnlineMove(side)) online.SendSpell(handIndex);
             ApplySpell(side, data);
             return true;
+        }
+
+        /// <summary>
+        /// 상대가 쓴 전술 카드를 화면 가운데에 크게 앞면으로 잠깐 보여 준 뒤 없앤다.
+        /// (유닛·장비는 필드에 남아서 보이지만, 전술은 바로 사라지므로 무슨 카드였는지 알려 주려고)
+        /// </summary>
+        void ShowCastSpell(CardView view)
+        {
+            view.transform.position = CastSpellShowPos;
+            view.transform.localScale = Vector3.one * CastSpellShowScale;
+            view.SetLayerBase(CastSpellLayerBase);
+            Destroy(view.gameObject, CastSpellShowSeconds);
         }
 
         /// <summary>
@@ -644,6 +662,7 @@ namespace CardBattle
         {
             int handIndex = fromHand.cards.IndexOf(view.transform);
             fromHand.RemoveCard(view.transform);
+            view.SetFaceDown(false); // 낸 카드는 앞면으로 (온라인에서 뒷면이던 상대 카드도 내는 순간 보인다)
             var drag = view.GetComponent<CardDragHandler>();
             if (drag != null) drag.ClearHand(); // 이제 손패 카드가 아니므로 드래그 연결을 끊는다
 
