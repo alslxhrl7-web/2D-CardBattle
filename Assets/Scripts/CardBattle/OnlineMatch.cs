@@ -17,8 +17,11 @@ namespace CardBattle
     /// </summary>
     public class OnlineMatch : MonoBehaviour
     {
-        [Tooltip("대전 서버 주소. 내 PC에서 테스트: ws://localhost:8080 / 배포 후: wss://twod-cardbattle-2026-09-23-16-33-40.onrender.com")]
-        public string serverUrl = "wss://twod-cardbattle-2026-09-23-16-33-40.onrender.com";
+        /// <summary>Render에 올린 대전 서버 주소. 웹 빌드는 이 주소로 접속한다 (localhost는 웹에서 쓸 수 없음).</summary>
+        public const string DeployedServerUrl = "wss://twod-cardbattle-2026-09-23-16-33-40.onrender.com";
+
+        [Tooltip("대전 서버 주소. 내 PC에서 테스트: ws://localhost:8080 / 배포한 서버: " + DeployedServerUrl)]
+        public string serverUrl = DeployedServerUrl;
         public CardManager manager; // 게임을 진행하는 매니저
         [Tooltip("상대 덱을 카드 이름으로 받아서 찾을 때 쓰는 전체 카드 목록 (메뉴 '새 카드·덱·덱 더미 적용'이 채운다)")]
         public List<CardData> cardLibrary = new List<CardData>();

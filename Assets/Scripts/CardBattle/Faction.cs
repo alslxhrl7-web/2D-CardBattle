@@ -18,7 +18,7 @@ namespace CardBattle
     }
 
     /// <summary>
-    /// 전술(Spell) 카드가 쓰였을 때 일어나는 효과. 효과의 크기는 CardData.effectValue.
+    /// 전술(Spell) 카드를 쓸 때, 또는 유닛·진을 낼 때(등장 효과) 일어나는 효과. 효과의 크기는 CardData.effectValue.
     /// 새 효과를 만들려면 여기에 이름을 추가하고 CardManager.ApplySpell()에 처리를 한 줄 넣으면 된다.
     /// </summary>
     public enum SpellEffect

@@ -72,7 +72,25 @@ namespace CardBattle.EditorTools
               "전술: 아군 필드 전체 +1/+1", "눈보라를 뚫고 기병이 들이닥친다.", SpellEffect.BuffAllAllies, 1),
             S("Shield_Cart", "ShieldCart", "방패차", "Shield Cart", Faction.Qing, CardKind.Formation, Rarity.Common, 2, 0, 5,
               "Wall: 받는 피해 -1", "화살이 박혀도 수레는 멈추지 않는다."),
+
+            // ---- 전설·히어로: 필드에 낼 때 효과가 한 번 일어난다 (등장 효과 = spellEffect) ----
+            S("Kim_Junryong", "KimJunryong", "김준룡", "Kim Jun-ryong", Faction.Joseon, CardKind.Unit, Rarity.Legendary, 5, 4, 5,
+              "등장: 적 필드 전체에 1 피해", "광교산의 밤, 적장 양굴리가 쓰러졌다.", SpellEffect.DamageAllEnemyUnits, 1),
+            S("Yi_Sibaek", "YiSibaek", "이시백", "Yi Si-baek", Faction.Joseon, CardKind.Unit, Rarity.Legendary, 5, 3, 7,
+              "Wall, 등장: 받는 피해 -1 / 낼 때 내 체력 5 회복", "성을 지키는 자는 한 걸음도 물러서지 않는다.", SpellEffect.HealHero, 5),
+            S("Yu_Rim", "YuRim", "유림", "Yu Rim", Faction.Joseon, CardKind.Unit, Rarity.Hero, 7, 6, 7,
+              "등장: 아군 필드 전체 +1/+1", "김화의 눈밭에서 청군 기병이 무너졌다.", SpellEffect.BuffAllAllies, 1),
+            S("Mafuta", "Mafuta", "마부대", "Mafuta", Faction.Qing, CardKind.Unit, Rarity.Legendary, 5, 5, 4,
+              "등장: 적 장수에게 3 피해", "선봉은 언제나 가장 먼저 강을 건넌다.", SpellEffect.DamageEnemyHero, 3),
+            S("Hooge", "Hooge", "호거", "Hooge", Faction.Qing, CardKind.Unit, Rarity.Legendary, 5, 4, 4,
+              "Ranged, 등장: 상대 Wall 무시 / 낼 때 카드 1장 드로우", "칸의 맏아들, 활시위는 흔들리지 않는다.", SpellEffect.DrawCards, 1),
+            S("Dorgon", "Dorgon", "도르곤", "Dorgon", Faction.Qing, CardKind.Unit, Rarity.Hero, 7, 6, 6,
+              "등장: 적 필드 전체에 2 피해", "강화도의 성문이 불타던 날.", SpellEffect.DamageAllEnemyUnits, 2),
         };
+
+        // 이미 있는 시작 덱에도 한 장씩 넣어 주는 전설·히어로 카드 (덱에 없을 때만 넣는다)
+        static readonly string[] NewJoseonLegends = { "Kim_Junryong", "Yi_Sibaek", "Yu_Rim" };
+        static readonly string[] NewQingLegends = { "Mafuta", "Hooge", "Dorgon" };
 
         // ================= 시작 덱 (카드 파일 이름, 장수) — 각 21장 =================
         static readonly KeyValuePair<string, int>[] JoseonDeck =
@@ -114,12 +132,12 @@ namespace CardBattle.EditorTools
         const string TutorialJoseonPath = "Assets/DeckData/Tutorial_Joseon.asset"; // 튜토리얼 조선 덱
         const string TutorialQingPath = "Assets/DeckData/Tutorial_Qing.asset";     // 튜토리얼 청 덱
 
-        // ---- 덱 편집 화면 타일 배치 (9칸 × 3줄 = 27칸) ----
-        const int TileColumns = 9;           // 한 줄에 놓을 타일 수
-        const float TileSpacingX = 2.05f;    // 타일 가로 간격
+        // ---- 덱 편집 화면 타일 배치 (11칸 × 3줄 = 33칸) ----
+        const int TileColumns = 11;          // 한 줄에 놓을 타일 수
+        const float TileSpacingX = 1.85f;    // 타일 가로 간격 (11칸 × 1.85 ≈ 배경판 폭)
         static readonly float[] TileRowsY = { 3.5f, 0.9f, -1.7f }; // 줄마다의 y 위치 (위에서 아래로)
         const float TileScale = 0.55f;       // 타일 크기 (기존 타일과 같음)
-        const float PanelMinWidth = 19.5f;   // 덱 편집 배경판 최소 가로 폭 (9칸이 들어가도록 넓힘)
+        const float PanelMinWidth = 21f;     // 덱 편집 배경판 최소 가로 폭 (11칸이 들어가도록 넓힘)
 
         // ---- 덱 더미 위치 ----
         static readonly Vector3 PlayerPilePos = new Vector3(9.9f, -2.4f, 0f);  // 배틀: 내 드로우 더미 (오른쪽 아래)
@@ -149,6 +167,8 @@ namespace CardBattle.EditorTools
             CreateCards(log);
             WriteDeck(JoseonDeckPath, JoseonDeck, log);
             WriteDeck(QingDeckPath, QingDeck, log);
+            AddToDeck(JoseonDeckPath, NewJoseonLegends, log);
+            AddToDeck(QingDeckPath, NewQingLegends, log);
             RefillPack(log);
             var tutorialJoseon = WriteTutorialDeck(TutorialJoseonPath, "튜토리얼 조선", Faction.Joseon, TutorialJoseonDeck, log);
             var tutorialQing = WriteTutorialDeck(TutorialQingPath, "튜토리얼 청", Faction.Qing, TutorialQingDeck, log);
@@ -223,6 +243,21 @@ namespace CardBattle.EditorTools
             log.Add("덱 구성: " + path + " (" + deck.TotalCount() + "장)");
         }
 
+        /// <summary>덱에 없는 카드만 한 장씩 넣는다. (덱 편집에서 뺀 뒤 다시 실행하면 또 들어가니, 빼고 싶으면 이 목록에서도 지울 것)</summary>
+        static void AddToDeck(string path, string[] files, List<string> log)
+        {
+            var deck = AssetDatabase.LoadAssetAtPath<DeckData>(path);
+            if (deck == null) return;
+            foreach (var file in files)
+            {
+                var card = FindCard(file);
+                if (card == null || deck.entries.Exists(e => e.card == card)) continue;
+                deck.entries.Add(new DeckData.Entry { card = card, count = 1 });
+                log.Add("덱에 추가: " + card.cardNameKo + " → " + path);
+            }
+            EditorUtility.SetDirty(deck);
+        }
+
         /// <summary>튜토리얼 덱은 순서가 중요해서 매번 표대로 다시 쓴다(없으면 만든다). 덱 편집 화면에는 나오지 않는다.</summary>
         static DeckData WriteTutorialDeck(string path, string deckName, Faction faction, KeyValuePair<string, int>[] list, List<string> log)
         {
@@ -260,7 +295,7 @@ namespace CardBattle.EditorTools
 
         /// <summary>
         /// 덱 편집 화면에 모든 카드(히어로 제외 없이 전부)의 타일이 있도록 기존 타일을 복제해 추가하고,
-        /// 진영 → 종류 → 비용 순서로 9칸 × 3줄에 다시 배치한다.
+        /// 진영 → 종류 → 비용 순서로 11칸 × 3줄에 다시 배치한다.
         /// </summary>
         static void LayoutDeckBuilderTiles(List<string> log)
         {
@@ -312,7 +347,7 @@ namespace CardBattle.EditorTools
             }
             EditorUtility.SetDirty(ui);
 
-            // 배경판을 넓혀서 9칸이 다 들어가게
+            // 배경판을 넓혀서 11칸이 다 들어가게
             var bg = ui.panelRoot != null ? ui.panelRoot.transform.Find("Background") : null;
             var sr = bg != null ? bg.GetComponent<SpriteRenderer>() : null;
             if (sr != null && sr.bounds.size.x < PanelMinWidth)

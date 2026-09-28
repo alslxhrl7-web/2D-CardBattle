@@ -22,8 +22,8 @@ namespace CardBattle
         public int attack;                     // 공격력 — 레인 전투에서 상대에게 주는 피해
         public int health;                     // 체력(최대치). 전투 중 실제로 깎이는 체력은 CardView.currentHealth
                                                // (장비 카드는 attack/health가 "붙인 유닛에게 더해 줄 값", 전술 카드는 쓰지 않음)
-        public SpellEffect spellEffect;        // 전술 카드의 효과 종류 (전술이 아니면 무시)
-        public int effectValue;                // 전술 카드 효과의 크기 (피해량, 드로우 장수 등)
+        public SpellEffect spellEffect;        // 효과 종류. 전술: 쓸 때 / 유닛·진: 필드에 낼 때(등장 효과). 장비는 무시
+        public int effectValue;                // 효과의 크기 (피해량, 드로우 장수 등)
         [TextArea] public string keywordText;  // "키워드명: 설명" 형식. 키워드명에 CardKeywords의 단어가 있으면 전투 효과가 적용됨
         [TextArea] public string flavorText;   // 카드 맨 아래 짧은 설정 문구 (전투에 영향 없음)
         public Sprite portrait;                // 카드 초상화. 원본 크기와 상관없이 CardView가 항상 같은 크기로 맞춘다

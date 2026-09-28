@@ -311,10 +311,24 @@ namespace CardBattle
             RefreshHandFaces(); // 2인 대전: 전투를 보는 동안에는 양쪽 손패를 덮어 둔다
             yield return StartCoroutine(CombatAnimation.PlayAttacks(this, plan, HeroPoint(Side.Player), HeroPoint(Side.Enemy), manaText));
             LaneCombat.ApplyDamage(plan);                              // 이제 실제로 피해 적용 (체력 숫자 갱신)
-            yield return StartCoroutine(CombatAnimation.PlayDeaths(plan.deadUnits)); // 죽은 카드가 사라지는 연출
+            yield return StartCoroutine(CombatAnimation.PlayDeaths(WithEquipment(plan.deadUnits))); // 죽은 카드(+ 뒤의 장비)가 사라지는 연출
             LaneCombat.RemoveDead(playerField, enemyField);            // 실제 제거
             busy = false;
             FinishCombat(plan);
+        }
+
+        /// <summary>죽은 유닛 목록에 그 유닛 뒤에 붙어 있던 장비를 더한다 (유닛이 쓰러지면 장비도 같이 사라진다).</summary>
+        List<CardView> WithEquipment(List<CardView> deadUnits)
+        {
+            var list = new List<CardView>(deadUnits);
+            foreach (var field in new[] { playerField, enemyField })
+                foreach (var slot in field.frontRow)
+                {
+                    if (!deadUnits.Contains(slot.OccupantView)) continue;
+                    var equipment = EquipmentBehind(field, slot);
+                    if (equipment != null) list.Add(equipment);
+                }
+            return list;
         }
 
         /// <summary>히어로 피해를 반영하고 승패를 확인한 뒤, 게임이 안 끝났으면 다음 턴으로 넘어간다.</summary>
@@ -501,6 +515,7 @@ namespace CardBattle
         /// 손패의 유닛·진 카드를 필드 전열 칸에 내는 유일한 입구. 드래그(CardDragHandler)와 상대 AI가 모두 이 함수를 쓴다.
         /// 실패 조건: 게임 종료 / 카드·슬롯 없음 / 전열 칸이 아님(후열은 장비 칸) / 슬롯이 이미 참 / 군력 부족.
         /// 같은 레인 후열에 장비가 놓여 있으면 새로 들어온 카드가 그 장비 수치만큼 바로 강해진다.
+        /// 카드에 spellEffect가 있으면 놓자마자 그 효과가 일어난다(등장 효과 — 전술과 같은 ApplySpell을 쓴다).
         /// </summary>
         public bool TryPlaceCard(CardView view, HandZone fromHand, FieldSlot slot)
         {
@@ -517,12 +532,14 @@ namespace CardBattle
 
             var equipment = EquipmentBehind(field, slot); // 같은 레인 후열 장비가 있으면 강화
             if (equipment != null) view.ApplyBuff(equipment.data.attack, equipment.data.health);
+
+            if (view.data.spellEffect != SpellEffect.None) ApplySpell(side, view.data); // 등장 효과 (전설·히어로 카드)
             return true;
         }
 
         /// <summary>
         /// 장비 카드를 내 필드의 후열 빈 칸(slot)에 놓는다. 같은 레인 전열 카드가 장비 수치만큼 강해지고,
-        /// 나중에 그 전열 칸에 새로 들어오는 카드도 강해진다(장비는 후열에 계속 남아 있음).
+        /// 앞이 빈 칸에 놓아 두면 나중에 들어오는 카드가 강해진다. 앞 카드가 죽으면 장비도 함께 사라진다(LaneCombat.RemoveDead).
         /// 실패 조건: 게임 종료·연출 중 / 장비가 아님 / 내 후열 빈 칸이 아님 / 군력 부족.
         /// </summary>
         public bool TryEquip(CardView view, HandZone fromHand, FieldSlot slot)

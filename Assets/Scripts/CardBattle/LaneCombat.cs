@@ -127,14 +127,17 @@ namespace CardBattle
             return damage < 0 ? 0 : damage;
         }
 
-        /// <summary>전열에서 체력이 0 이하인 카드를 제거한다. (후열 장비는 피해를 받지 않으므로 볼 필요 없음)</summary>
+        /// <summary>전열에서 체력이 0 이하인 카드를 제거하고, 그 카드 뒤(같은 레인 후열)의 장비도 함께 치운다.</summary>
         static void RemoveDeadUnits(FieldZone field)
         {
             if (field == null || field.frontRow == null) return;
-            foreach (var slot in field.frontRow)
+            for (int lane = 0; lane < field.LaneCount; lane++)
             {
-                var unit = slot != null ? slot.OccupantView : null;
-                if (unit != null && unit.IsDead) field.DestroyCardAt(slot);
+                var front = field.SlotAt(true, lane);
+                var unit = front != null ? front.OccupantView : null;
+                if (unit == null || !unit.IsDead) continue;
+                field.DestroyCardAt(front);
+                field.DestroyCardAt(field.SlotAt(false, lane)); // 뒤에 붙어 있던 장비도 같이 사라진다
             }
         }
     }

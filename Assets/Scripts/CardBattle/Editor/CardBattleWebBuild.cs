@@ -47,6 +47,7 @@ namespace CardBattle.EditorTools
                     return;
                 }
                 ApplyKoreanFont(log);
+                UseDeployedServer(log);
                 ConfigureWebGL(log);
                 if (!Build(log)) return;
                 MakeZip(log);
@@ -70,6 +71,25 @@ namespace CardBattle.EditorTools
             var log = new List<string>();
             ApplyKoreanFont(log);
             Debug.Log("[CardBattle] " + string.Join("\n", log.ToArray()));
+        }
+
+        // ================= 서버 주소 =================
+
+        /// <summary>
+        /// 씬의 온라인 대전 서버 주소가 내 PC(localhost)로 되어 있으면 배포한 서버 주소로 바꾸고 씬을 저장한다.
+        /// 웹 빌드는 다른 사람 컴퓨터에서 돌아가므로 localhost로는 접속할 수 없다.
+        /// </summary>
+        static void UseDeployedServer(List<string> log)
+        {
+            var online = UnityEngine.Object.FindAnyObjectByType<OnlineMatch>(FindObjectsInactive.Include);
+            if (online == null) { log.Add("서버 주소: OnlineMatch 없음 (온라인 대전 안 됨)"); return; }
+            if (online.serverUrl.Contains("localhost") || online.serverUrl.Contains("127.0.0.1"))
+            {
+                online.serverUrl = OnlineMatch.DeployedServerUrl;
+                EditorUtility.SetDirty(online);
+                EditorSceneManager.SaveScene(online.gameObject.scene);
+            }
+            log.Add("서버 주소: " + online.serverUrl);
         }
 
         // ================= 1) 한글 글꼴 =================

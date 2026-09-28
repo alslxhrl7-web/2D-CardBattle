@@ -50,7 +50,7 @@ namespace CardBattle
         public const string TutorialPlaceUnit = "튜토리얼 1/4 · 유닛 내기\n\n손패의 [의병]을 끌어서\n앞줄(전열) 빈 칸에 놓으세요.\n\n카드 왼쪽 위 숫자가\n필요한 군력입니다.";
         public const string TutorialEndFirstTurn = "좋아요!\n\n이제 [턴 종료]를 누르세요.\n같은 줄 카드끼리 싸우고,\n앞이 비어 있으면\n적 장수를 칩니다.";
         public const string TutorialEquip = "튜토리얼 2/4 · 장비\n\n[편전]을 의병 바로 뒤\n뒷줄(후열) 칸에 놓으면\n앞 카드 공격력이 오릅니다.";
-        public const string TutorialEndSecondTurn = "장비는 뒷줄에 남아서\n앞에 새로 오는 카드도\n강하게 해 줍니다.\n\n[턴 종료]를 누르세요.";
+        public const string TutorialEndSecondTurn = "앞 카드가 쓰러지면\n뒤의 장비도 함께\n사라집니다.\n\n[턴 종료]를 누르세요.";
         public const string TutorialSpell = "튜토리얼 3/4 · 전술\n\n[봉수]를 손패에서 위쪽\n(전장 쪽)으로 끌어 놓으면\n바로 효과가 납니다.\n(카드 2장 뽑기)";
         public const string TutorialFreePlay = "튜토리얼 4/4 · 실전\n\n이제 자유롭게 싸워서\n청군의 체력을 0으로\n만드세요!";
 

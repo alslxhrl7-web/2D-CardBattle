@@ -15,21 +15,29 @@ namespace CardBattle.EditorTools
     ///   3) 결과를 프로젝트 폴더의 Logs/CardBattleAutoApply.log 에 기록 (Claude가 이 파일로 적용 여부를 확인함)
     /// 같은 ApplyVersion으로는 한 번만 실행된다. 다시 적용하고 싶으면 ApplyVersion 값을 바꾸거나
     /// 메뉴 "CardBattle/자동 적용 다시 실행"을 누른다.
+    ///
+    /// 빌드 요청: 프로젝트 폴더에 UserSettings/CardBattleBuildRequest.txt 가 있으면, 적용이 끝난 뒤 그 파일을 지우고
+    /// itch.io용 WebGL 빌드를 한 번 실행한다(Claude가 Unity를 직접 못 만질 때 빌드를 부탁하는 방법. 파일 내용은 상관없음).
     /// </summary>
     [InitializeOnLoad]
     public static class CardBattleAutoApply
     {
-        const string ApplyVersion = "v13-online-1";                                  // 적용 버전 (바뀌면 다시 한 번 실행됨)
+        const string ApplyVersion = "v15-backrow-1";                                  // 적용 버전 (바뀌면 다시 한 번 실행됨)
         const string PrefKey = "CardBattle.AutoApplyVersion";                        // 마지막으로 적용한 버전을 저장하는 키
         const string ScenePath = "Assets/Scenes/SampleScene.unity";                  // 게임 씬
         const string BackgroundPath = "Assets/Resources/Backgrounds/BattleBackground.png"; // 배경 그림
         const int BackgroundMaxSize = 2048;                                          // 배경 그림 최대 해상도 (흐려지지 않게)
         const string LogPath = "Logs/CardBattleAutoApply.log";                       // 결과 기록 파일 (프로젝트 폴더 기준)
+        const string BuildRequestPath = "UserSettings/CardBattleBuildRequest.txt";   // 있으면 적용 뒤 웹 빌드 한 번 (git에 안 올라가는 폴더)
 
         /// <summary>에디터가 켜지거나 스크립트가 다시 컴파일될 때 호출된다. 에디터가 준비된 뒤에 실행하도록 미룬다.</summary>
         static CardBattleAutoApply()
         {
-            if (EditorPrefs.GetString(PrefKey, "") == ApplyVersion) return; // 이미 적용함
+            if (EditorPrefs.GetString(PrefKey, "") == ApplyVersion) // 이미 적용함
+            {
+                if (File.Exists(BuildRequestPath)) EditorApplication.delayCall += RunRequestedBuild;
+                return;
+            }
             EditorApplication.delayCall += TryApply;
         }
 
@@ -90,6 +98,19 @@ namespace CardBattle.EditorTools
             report.Add(done ? "결과: 적용 완료" : "결과: 적용 못 함 (다음 컴파일 때 다시 시도)");
             WriteLog(report);
             Debug.Log("[CardBattle] 자동 적용\n" + string.Join("\n", report.ToArray()));
+            if (done && File.Exists(BuildRequestPath)) RunRequestedBuild();
+        }
+
+        /// <summary>빌드 요청 파일을 지우고(한 번만 하도록) 웹 빌드를 실행한다. 결과는 Logs/CardBattleWebBuild.log.</summary>
+        static void RunRequestedBuild()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                EditorApplication.delayCall += RunRequestedBuild; // 바쁘면 잠시 뒤에
+                return;
+            }
+            File.Delete(BuildRequestPath);
+            CardBattleWebBuild.BuildForItch();
         }
 
         /// <summary>배경 그림이 Sprite 형식이 아니면 Sprite로 바꿔 다시 임포트한다.</summary>
